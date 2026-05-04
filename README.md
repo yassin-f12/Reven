@@ -11,7 +11,6 @@ Application mobile de suivi d'addiction sur 30 jours. Le principe : un grimpeur 
 - **Zustand** (state management)
 - **AsyncStorage** (persistance locale)
 - **expo-notifications** (rappels journaliers)
-- **expo-linear-gradient** (UI)
 
 ## Installation
 
