@@ -1,50 +1,53 @@
-# Welcome to your Expo app 👋
+# 🧗 Reven
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+> Grimpe vers ta meilleure version — une journée à la fois.
 
-## Get started
+Application mobile de suivi d'addiction sur 30 jours. Le principe : un grimpeur monte ou descend un mur selon ta consommation journalière. Zéro journée = +3 cases vers le sommet.
 
-1. Install dependencies
+## Stack
 
-   ```bash
-   npm install
-   ```
+- **Expo SDK 50** + **Expo Router** (file-based routing)
+- **React Native** + **TypeScript**
+- **Zustand** (state management)
+- **AsyncStorage** (persistance locale)
+- **expo-notifications** (rappels journaliers)
+- **expo-linear-gradient** (UI)
 
-2. Start the app
+## Installation
 
-   ```bash
-   npx expo start
-   ```
+\`\`\`bash
+npm install
+npx expo start
+\`\`\`
 
-In the output, you'll find options to open the app in a
+Scanner le QR avec **Expo Go** sur iOS ou Android.
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Structure
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+\`\`\`
+app/          → Écrans (Expo Router)
+src/
+  components/ → ClimberWall, DayTracker
+  store/      → useStore (Zustand)
+  utils/      → theme, notifications, calculations
+  data/       → avatars, motivations
+  types.ts    → Types TypeScript centraux
+\`\`\`
 
-## Get a fresh project
+## Logique de jeu
 
-When you're ready, run:
+| Conso | Effet |
+|-------|-------|
+| 0 | +3 cases ⬆️ |
+| 1-2 | stable |
+| 3-5 | -1 case ⬇️ |
+| 6-10 | -3 cases ⬇️ |
+| 10+ | -5 cases ⬇️ |
 
-```bash
-npm run reset-project
-```
+## Roadmap v2
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- [ ] Partage de progression
+- [ ] Thèmes visuels
+- [ ] Mode multijoueur / défi entre amis
+- [ ] Statistiques avancées (graphiques)
+\`\`\`
