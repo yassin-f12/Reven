@@ -1,6 +1,6 @@
 # 🧗 Reven
 
-> Grimpe vers ta meilleure version — une journée à la fois.
+> Grimpe vers ta meilleure version - une journée à la fois.
 
 Application mobile de suivi d'addiction sur 30 jours. Le principe : un grimpeur monte ou descend un mur selon ta consommation journalière. Zéro journée = +3 cases vers le sommet.
 
@@ -14,16 +14,16 @@ Application mobile de suivi d'addiction sur 30 jours. Le principe : un grimpeur 
 
 ## Installation
 
-\`\`\`bash
+```bash
 npm install
 npx expo start
-\`\`\`
+```
 
 Scanner le QR avec **Expo Go** sur iOS ou Android.
 
 ## Structure
 
-\`\`\`
+```text
 app/          → Écrans (Expo Router)
 src/
   components/ → ClimberWall, DayTracker
@@ -31,7 +31,7 @@ src/
   utils/      → theme, notifications, calculations
   data/       → avatars, motivations
   types.ts    → Types TypeScript centraux
-\`\`\`
+```
 
 ## Logique de jeu
 
@@ -42,11 +42,3 @@ src/
 | 3-5 | -1 case ⬇️ |
 | 6-10 | -3 cases ⬇️ |
 | 10+ | -5 cases ⬇️ |
-
-## Roadmap v2
-
-- [ ] Partage de progression
-- [ ] Thèmes visuels
-- [ ] Mode multijoueur / défi entre amis
-- [ ] Statistiques avancées (graphiques)
-\`\`\`
