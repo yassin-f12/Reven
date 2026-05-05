@@ -1,25 +1,22 @@
 import { Addiction, Avatar } from "@/types";
 
 export const AVATARS: Avatar[] = [
-  { id: "a1", iconName: "walk", label: "Grimpeur" },
-  { id: "a2", iconName: "shield", label: "Héros" },
-  { id: "a3", iconName: "glasses", label: "Sage" },
-  { id: "a4", iconName: "paw", label: "Renard" },
-  { id: "a5", iconName: "moon", label: "Loup" },
-  { id: "a6", iconName: "sunny", label: "Lion" },
-  { id: "a7", iconName: "flame", label: "Dragon" },
-  { id: "a8", iconName: "rocket", label: "Fusée" },
-  { id: "a9", iconName: "flash", label: "Éclair" },
-  { id: "a10", iconName: "star", label: "Étoile" },
-  { id: "a11", iconName: "bonfire", label: "Feu" },
-  { id: "a12", iconName: "diamond", label: "Diamant" },
+  { id: "a1", image: require("@/assets/images/avatars/Grimpeur.png"), label: "Grimpeur(se)" },
+  { id: "a2", image: require("@/assets/images/avatars/Heros.png"), label: "Héros(ïne)" },
+  { id: "a3", image: require("@/assets/images/avatars/Sage.png"), label: "Sage" },
+  { id: "a4", image: require("@/assets/images/avatars/Guerrier.png"), label: "Guerrier(ère)" },
+  { id: "a5", image: require("@/assets/images/avatars/Loup.png"), label: "Loup" },
+  { id: "a6", image: require("@/assets/images/avatars/Lion.png"), label: "Lion" },
+  { id: "a7", image: require("@/assets/images/avatars/Dragon.png"), label: "Dragon" },
+  { id: "a8", image: require("@/assets/images/avatars/Phenix.png"), label: "Phénix" },
+  { id: "a9", image: require("@/assets/images/avatars/Licorne.png"), label: "Licorne" },
 ];
 
 export const ADDICTIONS: Addiction[] = [
   {
     id: "cigarette",
     label: "Cigarettes",
-    iconName: "ban",
+    iconName: "logo-no-smoking",
     unit: "cigarette(s)",
   },
   { id: "alcohol", label: "Alcool", iconName: "wine", unit: "verre(s)" },
@@ -37,7 +34,7 @@ export const ADDICTIONS: Addiction[] = [
   },
   {
     id: "gambling",
-    label: "Jeux / Paris",
+    label: "Jeux / Paris sportifs",
     iconName: "dice",
     unit: "session(s)",
   },
