@@ -1,28 +1,23 @@
 import { COLORS } from "@/src/utils/theme";
 import { Avatar } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import React, { useEffect, useRef } from "react";
-import { Animated, Dimensions, StyleSheet, Text, View } from "react-native";
+import { useEffect, useRef } from "react";
+import {
+  Animated,
+  Dimensions,
+  Easing,
+  Image,
+  ImageBackground,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import useStore from "@/src/store/useStore";
 
-const { width: SCREEN_W, height: SCREEN_H } = Dimensions.get("window");
+const { width: SCREEN_W } = Dimensions.get("window");
 const TOTAL_STEPS = 30;
-
-const HOLDS: { left: string; top: string }[] = [
-  { left: "8%", top: "8%" },
-  { left: "75%", top: "12%" },
-  { left: "40%", top: "20%" },
-  { left: "18%", top: "32%" },
-  { left: "68%", top: "28%" },
-  { left: "50%", top: "40%" },
-  { left: "22%", top: "52%" },
-  { left: "78%", top: "48%" },
-  { left: "35%", top: "62%" },
-  { left: "12%", top: "72%" },
-  { left: "62%", top: "68%" },
-  { left: "45%", top: "80%" },
-  { left: "28%", top: "88%" },
-  { left: "70%", top: "85%" },
-];
+const SUMMIT_ZONE = 0.8;
 
 interface Props {
   position: number;
@@ -37,22 +32,37 @@ export default function ClimberWall({
   streak,
   fullWidth = false,
 }: Props) {
+  const reset = useStore((s) => s.reset);
+  const user = useStore((s) => s.user);
+
   const WALL_W = fullWidth ? SCREEN_W - 40 : 160;
-  const WALL_H = fullWidth ? 350 : SCREEN_H * 0.52;
+  const WALL_H = fullWidth ? 400 : 500;
 
   const swayAnim = useRef(new Animated.Value(0)).current;
   const bounceAnim = useRef(new Animated.Value(1)).current;
+  const glowAnim = useRef(new Animated.Value(0)).current;
+  const victoryAnim = useRef(new Animated.Value(0)).current;
+
+  const progress = Math.min(position / TOTAL_STEPS, 1);
+  const nearSummit = progress >= SUMMIT_ZONE;
+  const atSummit = position >= TOTAL_STEPS;
+
+  const TOP_Y = WALL_H * 0.08;
+  const BOTTOM_Y = WALL_H * 0.78;
+  const climberY = BOTTOM_Y - progress * (BOTTOM_Y - TOP_Y);
 
   useEffect(() => {
     Animated.sequence([
       Animated.timing(bounceAnim, {
-        toValue: 1.2,
-        duration: 150,
+        toValue: 1.15,
+        duration: 200,
+        easing: Easing.out(Easing.quad),
         useNativeDriver: true,
       }),
       Animated.spring(bounceAnim, {
         toValue: 1,
-        tension: 80,
+        tension: 60,
+        friction: 8,
         useNativeDriver: true,
       }),
     ]).start();
@@ -62,13 +72,27 @@ export default function ClimberWall({
     const sway = Animated.loop(
       Animated.sequence([
         Animated.timing(swayAnim, {
-          toValue: 4,
-          duration: 900,
+          toValue: 3,
+          duration: 1000,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
         Animated.timing(swayAnim, {
-          toValue: -4,
-          duration: 900,
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(swayAnim, {
+          toValue: -3,
+          duration: 1000,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(swayAnim, {
+          toValue: 0,
+          duration: 1000,
+          easing: Easing.inOut(Easing.sin),
           useNativeDriver: true,
         }),
       ]),
@@ -77,59 +101,147 @@ export default function ClimberWall({
     return () => sway.stop();
   }, []);
 
-  const progress = position / TOTAL_STEPS;
-  const climberY = WALL_H - 60 - progress * (WALL_H - 80);
-  const coverHeight = (1 - progress) * WALL_H;
+  useEffect(() => {
+    if (!nearSummit) return;
+    const glow = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.3,
+          duration: 800,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    glow.start();
+    return () => glow.stop();
+  }, [nearSummit]);
+
+  useEffect(() => {
+    if (!atSummit) return;
+    Animated.spring(victoryAnim, {
+      toValue: 1,
+      tension: 50,
+      friction: 7,
+      useNativeDriver: true,
+    }).start();
+  }, [atSummit]);
+
+  const glowOpacity = glowAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 0.6],
+  });
 
   return (
     <View style={[styles.container, { marginBottom: 12 }]}>
       <View style={[styles.wall, { width: WALL_W, height: WALL_H }]}>
-        {[...Array(8)].map((_, i) => (
-          <View key={i} style={[styles.rockLine, { top: `${i * 13}%` }]} />
-        ))}
+        <ImageBackground
+          source={require("@/assets/images/wall.jpeg")}
+          style={StyleSheet.absoluteFill}
+          resizeMode="cover"
+        />
 
-        {HOLDS.map((h, i) => (
-          <View
-            key={i}
-            style={[styles.hold, { left: h.left as any, top: h.top as any }]}
+        <View style={styles.overlay} />
+
+        {nearSummit && (
+          <Animated.View
+            style={[styles.summitGlow, { opacity: glowOpacity }]}
           />
-        ))}
-
-        <View style={[styles.progressZone, { height: coverHeight }]} />
+        )}
 
         <View style={styles.summit}>
-          <Ionicons name="flag" size={20} color={COLORS.gold} />
-          <Text style={styles.summitLabel}>SOMMET</Text>
+          <Ionicons name="flag" size={35} color={COLORS.orange} />
         </View>
 
-        <Animated.View
-          style={[
-            styles.climber,
-            {
-              top: climberY,
-              transform: [{ translateX: swayAnim }, { scale: bounceAnim }],
-            },
-          ]}
-        >
-          <View style={styles.avatarBubble}>
-            <Ionicons
-              name={avatar?.iconName ?? "person"}
-              size={24}
-              color={COLORS.gold}
-            />
-          </View>
-          {streak > 0 && (
-            <View style={styles.streakBadge}>
-              <Ionicons name="flame" size={10} color="#fff" />
-              <Text style={styles.streakText}>{streak}</Text>
+        {!atSummit && (
+          <Animated.View
+            style={[
+              styles.climber,
+              {
+                top: climberY,
+                transform: [{ translateX: swayAnim }, { scale: bounceAnim }],
+              },
+            ]}
+          >
+            {nearSummit && (
+              <Text style={styles.nearSummitBadge}>Courage, tu y es presque !</Text>
+            )}
+            <View
+              style={[
+                styles.avatarBubble,
+                nearSummit && styles.avatarBubbleNearSummit,
+              ]}
+            >
+              <Image source={avatar?.image} style={{ width: 35, height: 35 }} />
             </View>
-          )}
-        </Animated.View>
+            {streak > 0 && (
+              <View style={styles.streakBadge}>
+                <Ionicons name="flame" size={10} color="#fff" />
+                <Text style={styles.streakText}>{streak}</Text>
+              </View>
+            )}
+          </Animated.View>
+        )}
 
-        <View style={styles.posLabel}>
-          <Text style={styles.posText}>
-            {position}/{TOTAL_STEPS}
-          </Text>
+        {atSummit && (
+          <Animated.View
+            style={[
+              styles.victoryOverlay,
+              {
+                opacity: victoryAnim,
+                transform: [
+                  {
+                    scale: victoryAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0.85, 1],
+                    }),
+                  },
+                ],
+              },
+            ]}
+          >
+            <View style={styles.victoryCard}>
+              <Ionicons name="trophy" size={48} color={COLORS.gold} />
+              <Text style={styles.victoryTitle}>Sommet atteint !</Text>
+              <Image source={avatar?.image} style={styles.victoryAvatar} />
+              <Text style={styles.victoryAddiction}>
+                30 jours sans {user?.addiction?.label?.toLowerCase()}
+              </Text>
+              <Text style={styles.victorySub}>Tu l'as fait. Pour de vrai.</Text>
+
+              <TouchableOpacity onPress={reset} style={styles.restartBtn}>
+                <Ionicons name="refresh" size={16} color={COLORS.bgSecondary} />
+                <Text style={styles.restartBtnText}>Recommencer à 0</Text>
+              </TouchableOpacity>
+              <Text style={styles.restartSub}>
+                Parce qu'on n'arrête jamais de grimper
+              </Text>
+            </View>
+          </Animated.View>
+        )}
+
+        {!atSummit && (
+          <View style={styles.posLabel}>
+            <Text style={styles.posText}>
+              {position}/{TOTAL_STEPS}
+            </Text>
+          </View>
+        )}
+
+        <View style={styles.progressBar}>
+          <View
+            style={[
+              styles.progressFill,
+              { height: `${progress * 100}%` },
+              nearSummit && styles.progressFillNearSummit,
+            ]}
+          />
         </View>
       </View>
     </View>
@@ -139,51 +251,34 @@ export default function ClimberWall({
 const styles = StyleSheet.create({
   container: { alignItems: "center" },
   wall: {
-    backgroundColor: COLORS.wallBg,
     borderRadius: 20,
     overflow: "hidden",
     position: "relative",
-    borderWidth: 3,
+    borderWidth: 2,
     borderColor: COLORS.wallBorder,
     elevation: 10,
   },
-  rockLine: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    height: 1,
-    backgroundColor: "rgba(255,255,255,0.04)",
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.25)",
+    zIndex: 1,
   },
-  hold: {
-    position: "absolute",
-    width: 14,
-    height: 14,
-    borderRadius: 4,
-    backgroundColor: "rgba(255,255,255,0.18)",
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
-    transform: [{ translateX: -7 }, { translateY: -7 }],
-  },
-  progressZone: {
+  summitGlow: {
     position: "absolute",
     top: 0,
     left: 0,
     right: 0,
-    backgroundColor: COLORS.wallOverlay,
+    height: "30%",
+    backgroundColor: COLORS.gold,
+    zIndex: 2,
   },
   summit: {
     position: "absolute",
-    top: 6,
+    top: 8,
     left: 0,
     right: 0,
     alignItems: "center",
-  },
-  summitLabel: {
-    color: COLORS.gold,
-    fontSize: 8,
-    fontWeight: "900",
-    letterSpacing: 1,
-    marginTop: 1,
+    zIndex: 10,
   },
   climber: {
     position: "absolute",
@@ -192,15 +287,30 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 10,
   },
+  nearSummitBadge: {
+    color: COLORS.gold,
+    fontSize: 9,
+    fontWeight: "900",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 8,
+    marginBottom: 4,
+    overflow: "hidden",
+  },
   avatarBubble: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.15)",
-    borderWidth: 2,
+    backgroundColor: "rgba(255,255,255,0.2)",
     borderColor: COLORS.gold,
     alignItems: "center",
     justifyContent: "center",
+  },
+  avatarBubbleNearSummit: {
+    borderColor: "#ffd700",
+    backgroundColor: "rgba(255,215,0,0.2)",
+    borderWidth: 3,
   },
   streakBadge: {
     position: "absolute",
@@ -219,10 +329,94 @@ const styles = StyleSheet.create({
     position: "absolute",
     bottom: 8,
     right: 8,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     borderRadius: 8,
     paddingHorizontal: 6,
     paddingVertical: 2,
+    zIndex: 10,
   },
   posText: { color: COLORS.gold, fontSize: 10, fontWeight: "700" },
+  progressBar: {
+    position: "absolute",
+    left: 8,
+    bottom: 8,
+    top: 8,
+    width: 4,
+    backgroundColor: "rgba(255,255,255,0.15)",
+    borderRadius: 2,
+    zIndex: 10,
+    justifyContent: "flex-end",
+  },
+  progressFill: {
+    width: "100%",
+    backgroundColor: COLORS.success,
+    borderRadius: 2,
+  },
+  progressFillNearSummit: {
+    backgroundColor: COLORS.gold,
+  },
+
+  victoryOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 20,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.75)",
+    padding: 20,
+  },
+  victoryCard: {
+    alignItems: "center",
+    backgroundColor: COLORS.bgSecondary,
+    borderRadius: 24,
+    padding: 28,
+    borderColor: COLORS.goldBorder,
+    width: "100%",
+    gap: 8,
+  },
+  victoryTitle: {
+    color: COLORS.gold,
+    fontSize: 24,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textAlign: "center",
+  },
+  victoryAvatar: {
+    width: 64,
+    height: 64,
+    marginVertical: 4,
+  },
+  victoryAddiction: {
+    color: COLORS.textPrimary,
+    fontSize: 16,
+    fontWeight: "800",
+    textAlign: "center",
+  },
+  victorySub: {
+    color: COLORS.textSecondary,
+    fontSize: 13,
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  restartBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    backgroundColor: COLORS.gold,
+    borderRadius: 14,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    marginTop: 4,
+  },
+  restartBtnText: {
+    color: COLORS.bgSecondary,
+    fontWeight: "900",
+    fontSize: 15,
+  },
+  restartSub: {
+    color: COLORS.textMuted,
+    fontSize: 11,
+    fontStyle: "italic",
+    textAlign: "center",
+    marginTop: 4,
+  },
 });

@@ -2,6 +2,7 @@ import { IoniconsName } from "@/src/utils/icons";
 import { DayLog } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+import { COLORS } from "@/src/utils/theme";
 
 interface Props {
   logs: DayLog[];
@@ -30,17 +31,17 @@ export default function DayTracker({ logs, currentDay }: Props) {
   const getColor = (status: Status): string => {
     switch (status) {
       case "clean":
-        return "#4ade80";
+        return COLORS.success;
       case "ok":
-        return "#facc15";
+        return COLORS.warning;
       case "bad":
-        return "#fb923c";
+        return COLORS.danger;
       case "fail":
-        return "#f87171";
+        return COLORS.dangerDim;
       case "today":
-        return "#60a5fa";
+        return COLORS.info;
       case "missed":
-        return "#6b7280";
+        return COLORS.textSecondary;
       default:
         return "#374151";
     }
@@ -56,7 +57,7 @@ export default function DayTracker({ logs, currentDay }: Props) {
       case "clean":
         return { name: "checkmark", size: 12 };
       case "ok":
-        return { name: "remove", size: 12 };
+        return { name: "reorder-two-outline", size: 12 };
       case "bad":
         return { name: "arrow-down", size: 12 };
       case "fail":
@@ -70,10 +71,7 @@ export default function DayTracker({ logs, currentDay }: Props) {
     }
   };
 
-  const milestoneIcons: Record<
-    number,
-    IoniconsName
-  > = {
+  const milestoneIcons: Record<number, IoniconsName> = {
     7: "flame",
     15: "flash",
     30: "trophy",
@@ -84,18 +82,21 @@ export default function DayTracker({ logs, currentDay }: Props) {
     label: string;
     icon: IoniconsName;
   }[] = [
-    { color: "#4ade80", label: "Zéro", icon: "checkmark" },
-    { color: "#facc15", label: "1-2", icon: "remove" },
-    { color: "#fb923c", label: "3-5", icon: "arrow-down" },
-    { color: "#f87171", label: "6+", icon: "close" },
-    { color: "#60a5fa", label: "Auj'", icon: "radio-button-on" },
+    { color: COLORS.success, label: "Zéro", icon: "checkmark" },
+    { color: COLORS.warning, label: "1-2", icon: "reorder-two-outline" },
+    { color: COLORS.danger, label: "3-5", icon: "arrow-down" },
+    { color: COLORS.dangerDim, label: "6+", icon: "close" },
+    { color: COLORS.info, label: "Auj'", icon: "radio-button-on" },
   ];
 
   return (
     <View style={styles.container}>
-      <View style={styles.titleRow}>
-        <Ionicons name="calendar" size={14} color="#fff" />
-        <Text style={styles.title}> Les 30 jours</Text>
+      <View style={styles.headerRow}>
+        <View style={styles.titleRow}>
+          <Ionicons name="calendar" size={14} color={COLORS.textSecondary} />
+          <Text style={styles.title}> Les 30 jours</Text>
+        </View>
+        <Ionicons name="arrow-forward" size={16} color={COLORS.textSecondary} />
       </View>
       <ScrollView
         horizontal
@@ -109,14 +110,12 @@ export default function DayTracker({ logs, currentDay }: Props) {
           const milestoneIcon = milestoneIcons[day];
           return (
             <View key={day} style={styles.dayWrap}>
-              {milestoneIcon && (
-                <Ionicons
-                  name={milestoneIcon}
-                  size={10}
-                  color={color}
-                  style={{ marginBottom: 2 }}
-                />
-              )}
+              <View style={styles.milestoneTop}>
+                {milestoneIcon && (
+                  <Ionicons name={milestoneIcon} size={10} color={color} />
+                )}
+              </View>
+
               <View
                 style={[
                   styles.dayCell,
@@ -126,10 +125,11 @@ export default function DayTracker({ logs, currentDay }: Props) {
               >
                 <Ionicons name={icon.name} size={icon.size} color={color} />
               </View>
+
               <Text
                 style={[
                   styles.dayNum,
-                  { color: status === "today" ? "#60a5fa" : "#666" },
+                  { color: status === "today" ? COLORS.info : "#666" },
                 ]}
               >
                 {day}
@@ -152,21 +152,34 @@ export default function DayTracker({ logs, currentDay }: Props) {
 
 const styles = StyleSheet.create({
   container: {
-    backgroundColor: "rgba(255,255,255,0.05)",
+    backgroundColor: COLORS.bgPrimary,
     borderRadius: 16,
     padding: 16,
     marginVertical: 8,
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.08)",
+    borderColor: COLORS.bgSecondary,
   },
   titleRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: 12,
+    gap: 5,
   },
-  title: { color: "#fff", fontWeight: "700", fontSize: 14 },
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 5,
+  },
+  title: { color: COLORS.textSecondary, fontWeight: "700", fontSize: 14 },
   scroll: { paddingBottom: 4, gap: 6 },
   dayWrap: { alignItems: "center", width: 32 },
+  milestoneTop: {
+    height: 12, 
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 2,
+  },
   dayCell: {
     width: 28,
     height: 28,
@@ -176,7 +189,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   todayCell: {
-    shadowColor: "#60a5fa",
+    shadowColor: COLORS.info,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 6,
