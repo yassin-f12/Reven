@@ -11,12 +11,14 @@ import { DayLog } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import {
   Alert,
+  Image,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+// import { mockStats } from "@/src/mocks/testData";
 
 export default function StatsScreen() {
   const user = useStore((s) => s.user);
@@ -24,6 +26,14 @@ export default function StatsScreen() {
   const position = useStore((s) => s.position);
   const streak = useStore((s) => s.streak);
   const reset = useStore((s) => s.reset);
+
+  //////////////////////////////////////////////////////////
+  // const DEBUG = true;
+  // const user = useStore((s) => s.user);
+  // const position = DEBUG ? mockStats.position : useStore((s) => s.position);
+  // const streak = DEBUG ? mockStats.streak : useStore((s) => s.streak);
+  // const logs = DEBUG ? mockStats.logs : useStore((s) => s.logs);
+  ////////////////////////////////////////////////////////////////
 
   const cleanDays = logs.filter((l: DayLog) => l.count === 0).length;
   const totalConsumed = logs.reduce(
@@ -63,7 +73,7 @@ export default function StatsScreen() {
       label: "Position",
       value: `${position}/30`,
       color: COLORS.success,
-      icon: "triangle",
+      icon: "map",
     },
     {
       label: "Streak actuel",
@@ -92,7 +102,7 @@ export default function StatsScreen() {
     {
       label: "Jours loggés",
       value: `${logs.length}/30`,
-      color: "#c084fc",
+      color: COLORS.info,
       icon: "calendar",
     },
   ];
@@ -101,21 +111,27 @@ export default function StatsScreen() {
     <View style={styles.bg}>
       <ScrollView contentContainerStyle={styles.container}>
         <View style={styles.pageTitleRow}>
-          <Ionicons name="bar-chart" size={24} color={COLORS.textPrimary} />
+          <Ionicons name="bar-chart" size={24} color={COLORS.gold} />
           <Text style={styles.pageTitle}> Mes Stats</Text>
         </View>
 
         <View style={styles.profileCard}>
           <View style={styles.profileIconWrap}>
-            <Ionicons
-              name={user?.avatar?.iconName ?? "person"}
-              size={36}
-              color={COLORS.gold}
+            <Image
+              source={user?.avatar?.image}
+              style={{ width: 36, height: 36 }}
             />
           </View>
           <View>
             <Text style={styles.profileName}>{user?.pseudo}</Text>
-            <Text style={styles.profileSub}>{user?.addiction?.label}</Text>
+            <View style={styles.profileRow}>
+              <Text style={styles.profileSub}>{user?.addiction?.label}</Text>
+              <Ionicons
+                name={user?.addiction?.iconName}
+                size={14}
+                color={COLORS.textSecondary}
+              />
+            </View>
           </View>
         </View>
 
@@ -164,18 +180,9 @@ export default function StatsScreen() {
               <View key={l.day} style={styles.logRow}>
                 <Text style={styles.logDay}>J{l.day}</Text>
                 <Text style={styles.logDate}>{date}</Text>
-                <View
-                  style={[
-                    styles.logCount,
-                    {
-                      backgroundColor: isClean
-                        ? COLORS.successDim
-                        : COLORS.dangerDim,
-                    },
-                  ]}
-                >
+                <View style={[styles.logCount]}>
                   <Ionicons
-                    name={isClean ? "happy-outline" : "alert-circle-outline"}
+                    name={isClean ? "happy-outline" : "sad-outline"}
                     size={14}
                     color={isClean ? COLORS.success : COLORS.danger}
                   />
@@ -197,7 +204,7 @@ export default function StatsScreen() {
         )}
 
         <TouchableOpacity onPress={confirmReset} style={styles.resetBtn}>
-          <Ionicons name="refresh" size={16} color={COLORS.danger} />
+          <Ionicons name="refresh" size={20} color={COLORS.danger} />
           <Text style={styles.resetText}> Recommencer à zéro</Text>
         </TouchableOpacity>
       </ScrollView>
@@ -213,6 +220,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginBottom: SPACING.xl,
+    gap: 10,
   },
   pageTitle: {
     fontSize: FONT_SIZE["3xl"],
@@ -245,6 +253,11 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.xl,
     fontWeight: FONT_WEIGHT.black,
   },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+  },
   profileSub: {
     color: COLORS.textSecondary,
     fontSize: FONT_SIZE.md,
@@ -253,27 +266,32 @@ const styles = StyleSheet.create({
   metricsGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: SPACING.sm + 2,
+    gap: SPACING.sm,
     marginBottom: SPACING["2xl"],
   },
   metricCard: {
-    width: "47%",
+    flexGrow: 1,
+    flexBasis: "48%",
     backgroundColor: COLORS.bgCard,
     borderRadius: RADIUS.lg,
     padding: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.bgCardBorder,
+    alignItems: "center",
+    justifyContent: "center",
   },
   metricValue: {
-    fontSize: FONT_SIZE["2xl"],
+    fontSize: FONT_SIZE.lg,
     fontWeight: FONT_WEIGHT.black,
     marginBottom: SPACING.xs,
+    textAlign: "center",
   },
   metricLabel: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm },
   sectionTitleRow: {
     flexDirection: "row",
     alignItems: "center",
     marginBottom: SPACING.md,
+    gap: 5,
   },
   sectionTitle: {
     color: COLORS.textPrimary,
@@ -282,7 +300,7 @@ const styles = StyleSheet.create({
   },
   emptyState: { alignItems: "center", padding: SPACING["3xl"] },
   emptyText: {
-    color: COLORS.textMuted,
+    color: COLORS.textSecondary,
     textAlign: "center",
     fontSize: FONT_SIZE.md,
     marginTop: SPACING.md,
@@ -317,14 +335,13 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.dangerDim,
     borderRadius: RADIUS.lg,
     alignItems: "center",
-    borderWidth: 1,
-    borderColor: "rgba(239,68,68,0.3)",
     flexDirection: "row",
     justifyContent: "center",
+    gap: 5,
   },
   resetText: {
     color: COLORS.danger,
     fontWeight: FONT_WEIGHT.bold,
-    fontSize: FONT_SIZE.base,
+    fontSize: FONT_SIZE.lg,
   },
 });

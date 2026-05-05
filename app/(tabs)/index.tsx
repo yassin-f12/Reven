@@ -13,6 +13,7 @@ import {
   TouchableOpacity,
   TouchableWithoutFeedback,
   View,
+  Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ClimberWall from "@/src/components/ClimberWall";
@@ -20,23 +21,28 @@ import DayTracker from "@/src/components/DayTracker";
 import motivationsData from "@/src/data/motivations.json";
 import useStore from "@/src/store/useStore";
 import { getDeltaInfo } from "@/src/utils/calculations";
-import {
-  COLORS,
-  FONT_SIZE,
-  RADIUS,
-  SPACING,
-} from "@/src/utils/theme";
+import { COLORS, FONT_SIZE, RADIUS, SPACING } from "@/src/utils/theme";
+// import { mockLogs } from "@/src/mocks/testData";
 
 export default function HomeScreen() {
   const user = useStore((s) => s.user);
   const position = useStore((s) => s.position);
   const streak = useStore((s) => s.streak);
   const logs = useStore((s) => s.logs);
+  const todayLog = useStore((s) => s.todayLog);
+  const dayNumber = useStore((s) => s.dayNumber);
   const newTrophy = useStore((s) => s.newTrophy);
   const clearNewTrophy = useStore((s) => s.clearNewTrophy);
   const logDay = useStore((s) => s.logDay);
-  const todayLog = useStore((s) => s.todayLog);
-  const dayNumber = useStore((s) => s.dayNumber);
+
+  //////////////////////////////////////////
+  // const DEBUG = true;
+  // const position = DEBUG ? 7 : useStore((s) => s.position);
+  // const streak = DEBUG ? 3 : useStore((s) => s.streak);
+  // const todayLog = DEBUG ? { day: 7, count: 2 } : useStore((s) => s.todayLog);
+  // const dayNumber = DEBUG ? 7 : useStore((s) => s.dayNumber);
+  // const logs = DEBUG ? mockLogs : useStore((s) => s.logs);
+  //////////////////////////////////////////
 
   const insets = useSafeAreaInsets();
   const [logModal, setLogModal] = useState(false);
@@ -77,22 +83,37 @@ export default function HomeScreen() {
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>Salut, {user?.pseudo}</Text>
-            <Text style={styles.subGreeting}>
-              Jour {dayNumber}/30 • {user?.addiction?.label}
-            </Text>
+          <View style={{ gap: 5 }}>
+            <View style={styles.userRow}>
+              <Image
+                source={user?.avatar?.image}
+                style={{ width: 35, height: 35 }}
+              />
+              <Text style={styles.greeting}>Salut {user?.pseudo}</Text>
+            </View>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
+            >
+              <Text style={styles.subGreeting}>
+                Jour {dayNumber}/30 • {user?.addiction?.label}
+              </Text>
+              <Ionicons
+                name={user?.addiction?.iconName}
+                size={14}
+                color={COLORS.textSecondary}
+              />
+            </View>
           </View>
           <View style={styles.streakPill}>
-            <Ionicons name="flame" size={14} color="#ff6a00" />
+            <Ionicons name="flame" size={14} color={COLORS.orange} />
             <Text style={styles.streakText}> {streak} jours</Text>
           </View>
         </View>
 
         <View style={styles.motivationBox}>
           <Ionicons
-            name="sparkles"
-            size={14}
+            name="chatbubble-ellipses-outline"
+            size={24}
             color={COLORS.gold}
             style={{ marginBottom: 4 }}
           />
@@ -161,12 +182,11 @@ export default function HomeScreen() {
           <View style={styles.loggedBox}>
             <View style={styles.loggedLeft}>
               <Ionicons
-                name="checkmark-circle"
+                name="checkmark-circle-outline"
                 size={18}
-                color={COLORS.success}
+                color={COLORS.textSecondary}
               />
               <Text style={styles.loggedText}>
-                {" "}
                 Loggé : {todayLog.count} {user?.addiction?.unit}
               </Text>
             </View>
@@ -199,7 +219,7 @@ export default function HomeScreen() {
                   </TouchableOpacity>
                   <Text style={styles.modalTitle}>Combien aujourd'hui ?</Text>
                   <Text style={styles.modalSub}>
-                    {user?.addiction?.label} — Sois honnête avec toi-même
+                    {user?.addiction?.label} - Sois honnête avec toi-même
                   </Text>
 
                   <View style={styles.quickRow}>
@@ -242,11 +262,24 @@ export default function HomeScreen() {
                         { borderColor: deltaInfo.color },
                       ]}
                     >
-                      <Text
-                        style={[styles.deltaText, { color: deltaInfo.color }]}
+                      <View
+                        style={{
+                          flexDirection: "row",
+                          alignItems: "center",
+                          gap: 8,
+                        }}
                       >
-                        {deltaInfo.text}
-                      </Text>
+                        <Ionicons
+                          name={deltaInfo.icon}
+                          size={24}
+                          color={deltaInfo.color}
+                        />
+                        <Text
+                          style={[styles.deltaText, { color: deltaInfo.color }]}
+                        >
+                          {deltaInfo.text}
+                        </Text>
+                      </View>
                     </View>
                   )}
 
@@ -311,6 +344,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: SPACING.md,
   },
+  userRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   greeting: {
     fontSize: FONT_SIZE.xl,
     fontWeight: "900",
@@ -322,22 +360,23 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   streakPill: {
-    backgroundColor: "rgba(255,69,0,0.2)",
+    backgroundColor: COLORS.dangerDim,
     borderRadius: RADIUS.full,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderWidth: 1,
-    borderColor: "rgba(255,69,0,0.4)",
     flexDirection: "row",
     alignItems: "center",
   },
-  streakText: { color: "#ff6a00", fontWeight: "800", fontSize: FONT_SIZE.md },
+  streakText: {
+    color: COLORS.orange,
+    fontWeight: "800",
+    fontSize: FONT_SIZE.md,
+  },
   motivationBox: {
     backgroundColor: COLORS.goldDim,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.md,
-    borderWidth: 1,
     borderColor: COLORS.goldBorder,
     alignItems: "center",
   },
@@ -378,26 +417,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     gap: SPACING.sm,
+    backgroundColor: COLORS.gold,
   },
   logBtnText: {
     fontSize: FONT_SIZE.lg,
     fontWeight: "900",
-    color: COLORS.bgSecondary,
+    color: COLORS.bgPrimary,
   },
   loggedBox: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    backgroundColor: COLORS.successDim,
+    backgroundColor: COLORS.bgSecondary,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.success,
   },
-  loggedLeft: { flexDirection: "row", alignItems: "center" },
+  loggedLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   loggedText: {
-    color: COLORS.success,
+    color: COLORS.textSecondary,
     fontWeight: "700",
     fontSize: FONT_SIZE.md,
   },
@@ -408,7 +446,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
   },
   modal: {
-    backgroundColor: "#1e1e3f",
+    backgroundColor: COLORS.bgSecondary,
     borderTopLeftRadius: RADIUS["2xl"],
     borderTopRightRadius: RADIUS["2xl"],
     padding: SPACING["2xl"],
@@ -487,10 +525,11 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     padding: SPACING.md,
     alignItems: "center",
+    backgroundColor: COLORS.gold,
   },
   confirmText: {
     color: COLORS.bgSecondary,
-    fontWeight: "900",
+    fontWeight: "700",
     fontSize: FONT_SIZE.base,
   },
   trophyOverlay: {
@@ -505,25 +544,23 @@ const styles = StyleSheet.create({
     padding: SPACING["3xl"],
     alignItems: "center",
     width: "100%",
-    borderWidth: 1,
-    borderColor: COLORS.goldBorder,
   },
   trophyLabel: {
     color: COLORS.gold,
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE["2xl"],
     fontWeight: "700",
     letterSpacing: 2,
     marginBottom: SPACING.sm,
   },
   trophyName: {
-    color: COLORS.textPrimary,
+    color: COLORS.gold,
     fontSize: FONT_SIZE["3xl"],
     fontWeight: "900",
     textAlign: "center",
     marginBottom: SPACING.sm,
   },
   trophyDesc: {
-    color: COLORS.textSecondary,
+    color: COLORS.gold,
     fontSize: FONT_SIZE.base,
     textAlign: "center",
     marginBottom: SPACING["2xl"],

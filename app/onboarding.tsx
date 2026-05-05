@@ -18,6 +18,7 @@ import {
   ScrollView,
   StyleSheet,
   Text,
+  Image,
   TextInput,
   TouchableOpacity,
   View,
@@ -52,7 +53,7 @@ export default function OnboardingScreen() {
     sub: string;
   }[] = [
     {
-      icon: "hand-left",
+      icon: "game-controller-outline",
       title: "Comment tu t'appelles ?",
       sub: "Ton pseudo de grimpeur",
     },
@@ -80,8 +81,7 @@ export default function OnboardingScreen() {
         >
           <View style={styles.header}>
             <View style={styles.logoRow}>
-              <Ionicons name="trending-up" size={32} color={COLORS.gold} />
-              <Text style={styles.logo}> Reven</Text>
+              <Text style={styles.logo}>Reven</Text>
             </View>
             <Text style={styles.tagline}>Grimpe vers ta meilleure version</Text>
           </View>
@@ -131,13 +131,7 @@ export default function OnboardingScreen() {
                     ]}
                     onPress={() => setAvatar(a)}
                   >
-                    <Ionicons
-                      name={a.iconName as any}
-                      size={28}
-                      color={
-                        avatar?.id === a.id ? COLORS.gold : COLORS.textSecondary
-                      }
-                    />
+                    <Image source={a.image} style={{ width: 35, height: 35 }} />
                     <Text style={styles.avatarLabel}>{a.label}</Text>
                   </TouchableOpacity>
                 ))}
@@ -195,8 +189,8 @@ export default function OnboardingScreen() {
                 {step < 2 ? "Continuer" : "Commencer l'aventure !"}
               </Text>
               <Ionicons
-                name={step < 2 ? "arrow-forward" : "rocket"}
-                size={18}
+                name={step < 2 ? "arrow-forward" : "checkmark-outline"}
+                size={25}
                 color={COLORS.bgSecondary}
               />
             </View>
@@ -264,7 +258,7 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZE.md,
   },
   input: {
-    backgroundColor: "rgba(255,255,255,0.1)",
+    backgroundColor: "rgba(255,255,255,0.5)",
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
     color: COLORS.textPrimary,
@@ -338,10 +332,11 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     gap: SPACING.sm,
+    backgroundColor: COLORS.gold,
   },
   btnText: {
     fontSize: FONT_SIZE.lg,
     fontWeight: FONT_WEIGHT.black,
-    color: COLORS.bgSecondary,
+    color: COLORS.bgPrimary,
   },
 });

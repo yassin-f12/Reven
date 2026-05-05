@@ -7,6 +7,7 @@ import {
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
+import { ImageBackground, View } from "react-native";
 
 export default function RootLayout() {
   const user = useStore((s) => s.user);
@@ -50,12 +51,24 @@ export default function RootLayout() {
   }, [user, notificationSettings]);
 
   return (
-    <>
-      <StatusBar style="light" />
-      <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="onboarding" />
-        <Stack.Screen name="(tabs)" />
-      </Stack>
-    </>
+    <ImageBackground
+      source={require("@/assets/images/Vintage_2.jpeg")}
+      style={{ flex: 1 }}
+      resizeMode="cover"
+    >
+      <View style={{ flex: 1 }}>
+        <StatusBar style="dark" />
+
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: "transparent" },
+          }}
+        >
+          <Stack.Screen name="onboarding" />
+          <Stack.Screen name="(tabs)" />
+        </Stack>
+      </View>
+    </ImageBackground>
   );
 }

@@ -10,20 +10,26 @@ import {
 import { Trophy } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
+// import { mockUnlockedTrophies } from "@/src/mocks/testData";
 
 const TROPHY_ICONS: Record<string, IoniconsName> = {
   t1: "leaf",
   t2: "flame",
   t3: "flash",
-  t4: "water",
-  t5: "triangle",
+  t4: "heart-half",
+  t5: "sparkles",
   t6: "trophy",
-  t7: "radio-button-on",
+  t7: "medal",
   t8: "barbell",
 };
 
 export default function TrophiesScreen() {
   const unlockedTrophies = useStore((s) => s.unlockedTrophies);
+
+  /////////////////////////////////////////////////
+  // const unlockedTrophies = mockUnlockedTrophies;
+  /////////////////////////////////////////////////
+
   const streak = useStore((s) => s.streak);
   const logs = useStore((s) => s.logs);
 
@@ -136,6 +142,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    gap: 10,
   },
   pageTitle: {
     fontSize: FONT_SIZE["3xl"],
@@ -158,15 +165,15 @@ const styles = StyleSheet.create({
   progressBg: {
     flex: 1,
     height: 8,
-    backgroundColor: COLORS.bgCard,
+    backgroundColor: COLORS.bgSecondary,
     borderRadius: RADIUS.sm,
     overflow: "hidden",
   },
-  progressFill: { height: "100%", borderRadius: RADIUS.sm },
+  progressFill: { height: "100%", borderRadius: RADIUS.sm, backgroundColor: COLORS.gold, },
   progressText: {
     color: COLORS.gold,
     fontWeight: FONT_WEIGHT.bold,
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.sm,
     width: 36,
     textAlign: "right",
   },
@@ -192,7 +199,7 @@ const styles = StyleSheet.create({
   },
   statLab: {
     color: COLORS.textMuted,
-    fontSize: FONT_SIZE.xs,
+    fontSize: FONT_SIZE.md,
     marginTop: 2,
     textAlign: "center",
   },
@@ -222,7 +229,6 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   unlockedBadge: {
-    backgroundColor: COLORS.successDim,
     borderRadius: RADIUS.sm,
     width: 28,
     height: 28,

@@ -7,6 +7,7 @@ export default function TabLayout() {
     <Tabs
       screenOptions={({ route }) => ({
         headerShown: false,
+        sceneStyle: { backgroundColor: "transparent" },
         tabBarStyle: {
           backgroundColor: COLORS.tabBg,
           borderTopColor: COLORS.bgCardBorder,
