@@ -1,4 +1,5 @@
 import { DayLog } from "@/types";
+import { COLORS } from "./theme";
 
 export function computePosition(logs: DayLog[]): number {
   let pos = 0;
@@ -34,12 +35,20 @@ export function computeDayNumber(startDate: string | null): number {
 export function getDeltaInfo(count: number): {
   delta: number;
   text: string;
+  icon: "arrow-up" | "arrow-forward" | "reorder-two-outline" | "arrow-down";
   color: string;
 } {
-  if (count === 0) return { delta: 3, text: "+3 cases ⬆️", color: "#4ade80" };
-  if (count <= 2) return { delta: 0, text: "= stable", color: "#facc15" };
-  if (count <= 5) return { delta: -1, text: "-1 case ⬇️", color: "#fb923c" };
+  if (count === 0)
+    return { delta: 3, text: "+3 cases", icon: "arrow-up", color: COLORS.success };
+
+  if (count <= 2)
+    return { delta: 0, text: "stable", icon: "reorder-two-outline", color: COLORS.warning };
+
+  if (count <= 5)
+    return { delta: -1, text: "-1 case", icon: "arrow-down", color: COLORS.orange };
+
   if (count <= 10)
-    return { delta: -3, text: "-3 cases ⬇", color: "#f87171" };
-  return { delta: -5, text: "-5 cases ⬇", color: "#ef4444" };
+    return { delta: -3, text: "-3 cases", icon: "arrow-down", color: COLORS.danger };
+
+  return { delta: -5, text: "-5 cases", icon: "arrow-down", color: COLORS.dangerDim };
 }

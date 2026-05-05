@@ -1,32 +1,33 @@
 export const COLORS = {
-  bgPrimary: '#f4f1ea',         
-  bgSecondary: '#eae4d8',       
-  bgCard: 'rgba(255,255,255,0.6)', 
-  bgCardBorder: 'rgba(120,100,80,0.2)',
+  bgPrimary: '#f2eedc',
+  bgSecondary: '#e8e2cc',
 
-  gold: '#c2a878',             
-  goldDim: 'rgba(194,168,120,0.2)',
-  goldBorder: 'rgba(194,168,120,0.4)',
-  orange: '#b86b3d',           
+  bgCard: 'rgba(242,238,220,0.85)',
+  bgCardBorder: 'rgba(80,55,30,0.18)',
 
-  textPrimary: '#2d2a26',       
-  textSecondary: '#6b645c',
-  textMuted: '#9c958c',
+  gold: '#c17f2a',
+  goldDim: 'rgba(193,127,42,0.18)',
+  goldBorder: 'rgba(193,127,42,0.4)',
+  orange: '#c45e2a',
 
-  success: '#6f8f72',           
-  successDim: 'rgba(111,143,114,0.2)',
-  warning: '#c9a227',          
-  danger: '#b5523b',            
-  dangerDim: 'rgba(181,82,59,0.15)',
-  info: '#7c9aa6',              
+  textPrimary: '#1e1a0e',
+  textSecondary: '#4a3f28',
+  textMuted: '#7a6e54',
 
-  wallBg: '#ded6c8',
-  wallBorder: '#c9bba4',
-  wallOverlay: 'rgba(0,0,0,0.15)',
+  success: '#4a7c4e',
+  successDim: 'rgba(74,124,78,0.15)',
+  warning: '#c49a1a',
+  danger: '#9c3528',
+  dangerDim: 'rgba(156,53,40,0.12)',
+  info: '#3a6b7a',
 
-  tabBg: '#eae4d8',
-  tabActive: '#b86b3d',
-  tabInactive: '#9c958c',
+  wallBg: 'rgba(220,210,185,0.7)',
+  wallBorder: '#c4b48a',
+  wallOverlay: 'rgba(0,0,0,0.12)',
+
+  tabBg: 'rgba(232,226,204,0.95)',
+  tabActive: '#c17f2a',
+  tabInactive: '#7a6e54',
 } as const;
 
 export const FONT_SIZE = {

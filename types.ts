@@ -1,8 +1,9 @@
 import { IoniconsName } from "@/src/utils/icons";
+import { ImageSourcePropType } from "react-native";
 
 export interface Avatar {
   id: string;
-  iconName: IoniconsName;
+  image: ImageSourcePropType;
   label: string;
 }
 
