@@ -1,9 +1,5 @@
 import useStore from "@/src/store/useStore";
-import {
-  requestNotificationPermission,
-  scheduleDailyReminder,
-  scheduleMotivationNotifications,
-} from "@/src/utils/notifications";
+import { scheduleAllNotifications } from "@/src/utils/notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
@@ -42,11 +38,7 @@ export default function RootLayout() {
     if (!user || !notificationSettings) return;
 
     (async () => {
-      const granted = await requestNotificationPermission();
-      if (granted) {
-        await scheduleDailyReminder(notificationSettings);
-        await scheduleMotivationNotifications();
-      }
+      await scheduleAllNotifications(notificationSettings);
     })();
   }, [user, notificationSettings]);
 
