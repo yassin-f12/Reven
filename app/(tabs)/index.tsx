@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useFocusEffect } from "expo-router";
-import React, { useCallback, useRef, useState } from "react";
+import React, { useCallback, useRef, useState, useEffect } from "react";
 import {
   Keyboard,
   KeyboardAvoidingView,
@@ -20,9 +20,18 @@ import ClimberWall from "@/src/components/ClimberWall";
 import DayTracker from "@/src/components/DayTracker";
 import motivationsData from "@/src/data/motivations.json";
 import useStore from "@/src/store/useStore";
-import { getDeltaInfo } from "@/src/utils/calculations";
-import { COLORS, FONT_SIZE, RADIUS, SPACING } from "@/src/utils/theme";
-// import { mockLogs } from "@/src/mocks/testData";
+import {
+  getDeltaInfo,
+  getSecondsUntilNextTick,
+  computePointsToNextLevel,
+} from "@/src/utils/calculations";
+import {
+  COLORS,
+  FONT_SIZE,
+  FONT_WEIGHT,
+  RADIUS,
+  SPACING,
+} from "@/src/utils/theme";
 
 export default function HomeScreen() {
   const user = useStore((s) => s.user);
@@ -34,21 +43,22 @@ export default function HomeScreen() {
   const newTrophy = useStore((s) => s.newTrophy);
   const clearNewTrophy = useStore((s) => s.clearNewTrophy);
   const logDay = useStore((s) => s.logDay);
-
-  //////////////////////////////////////////
-  // const DEBUG = true;
-  // const position = DEBUG ? 7 : useStore((s) => s.position);
-  // const streak = DEBUG ? 3 : useStore((s) => s.streak);
-  // const todayLog = DEBUG ? { day: 7, count: 2 } : useStore((s) => s.todayLog);
-  // const dayNumber = DEBUG ? 7 : useStore((s) => s.dayNumber);
-  // const logs = DEBUG ? mockLogs : useStore((s) => s.logs);
-  //////////////////////////////////////////
+  const score = useStore((s) => s.score);
+  const lastTickTime = useStore((s) => s.lastTickTime);
+  const tickHourly = useStore((s) => s.tickHourly);
+  const [secondsLeft, setSecondsLeft] = useState(3600);
+  const reportRelapse = useStore((s) => s.reportRelapse);
+  const relapseCount = useStore((s) => s.relapseCount);
 
   const insets = useSafeAreaInsets();
   const [logModal, setLogModal] = useState(false);
   const [count, setCount] = useState("");
   const [motivation] = useState(() => {
     const list = motivationsData.motivations;
+    return list[Math.floor(Math.random() * list.length)];
+  });
+  const [relapseMotivation] = useState(() => {
+    const list = motivationsData.relapseMotivations;
     return list[Math.floor(Math.random() * list.length)];
   });
 
@@ -60,6 +70,16 @@ export default function HomeScreen() {
     }, []),
   );
 
+  useEffect(() => {
+    const update = () => {
+      setSecondsLeft(getSecondsUntilNextTick(lastTickTime));
+      tickHourly();
+    };
+    update();
+    const interval = setInterval(update, 1000);
+    return () => clearInterval(interval);
+  }, [lastTickTime]);
+
   const submitLog = () => {
     const num = parseInt(count) || 0;
     logDay(num);
@@ -68,7 +88,7 @@ export default function HomeScreen() {
     Keyboard.dismiss();
   };
 
-  const deltaInfo = getDeltaInfo(parseInt(count) || 0);
+  const deltaInfo = getDeltaInfo(parseInt(count) || 0, user?.addiction?.id);
 
   return (
     <View style={styles.bg}>
@@ -95,7 +115,7 @@ export default function HomeScreen() {
               style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
             >
               <Text style={styles.subGreeting}>
-                Jour {dayNumber}/30 • {user?.addiction?.label}
+                Niveau {position}/30 • {user?.addiction?.label}
               </Text>
               <Ionicons
                 name={user?.addiction?.iconName}
@@ -112,7 +132,7 @@ export default function HomeScreen() {
 
         <View style={styles.motivationBox}>
           <Ionicons
-            name="chatbubble-ellipses-outline"
+            name="chatbubble-ellipses"
             size={24}
             color={COLORS.gold}
             style={{ marginBottom: 4 }}
@@ -127,6 +147,87 @@ export default function HomeScreen() {
           fullWidth
         />
 
+        <View style={styles.combinedBox}>
+          <View style={styles.timerRow}>
+            <View style={styles.timerLeft}>
+              <Ionicons name="timer" size={18} color={COLORS.gold} />
+              <View>
+                <Text style={styles.timerLabel}>
+                  {secondsLeft === 0
+                    ? "Gain disponible !"
+                    : `+50 pts dans ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`}
+                </Text>
+                <View
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
+                >
+                  {position < 30 ? (
+                    <Text
+                      style={[
+                        styles.timerLabel,
+                        { fontSize: 11, opacity: 0.75 },
+                      ]}
+                    >
+                      {`Niveau suivant dans ${computePointsToNextLevel(score)} pts`}
+                    </Text>
+                  ) : (
+                    <>
+                      <Text
+                        style={[
+                          styles.timerLabel,
+                          { fontSize: 11, opacity: 0.75 },
+                        ]}
+                      >
+                        Sommet atteint !
+                      </Text>
+                      <Ionicons
+                        name="trophy"
+                        size={11}
+                        color={COLORS.gold}
+                        style={{ opacity: 0.75 }}
+                      />
+                    </>
+                  )}
+                </View>
+              </View>
+            </View>
+            <View style={styles.timerScorePill}>
+              <Ionicons name="star" size={12} color={COLORS.gold} />
+              <Text style={styles.timerScore}>
+                {secondsLeft === 0 ? score : score + 50} pts
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.combinedSeparator} />
+
+          <View style={styles.relapseRow}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
+            >
+              <Text style={styles.relapseText}>Tu as fait une chute ?</Text>
+              {relapseCount > 0 && (
+                <View style={styles.relapseCountPill}>
+                  <Ionicons name="fitness" size={11} color={COLORS.danger} />
+                  <Text style={styles.relapseCountText}>{relapseCount}</Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity onPress={reportRelapse} style={styles.relapseBtn}>
+              <Ionicons name="fitness" size={14} color={COLORS.danger} />
+              <Text style={styles.relapseBtnText}>Oui</Text>
+            </TouchableOpacity>
+          </View>
+          <View style={styles.motivationBox2}>
+            <Ionicons
+              name="chatbubble-ellipses"
+              size={24}
+              color={COLORS.textMuted}
+              style={{ marginBottom: 4 }}
+            />
+            <Text style={styles.motivationText2}>{relapseMotivation}</Text>
+          </View>
+        </View>
+
         <View style={styles.statsRow}>
           <View style={styles.statCard}>
             <Ionicons name="trending-up" size={16} color={COLORS.textPrimary} />
@@ -136,20 +237,18 @@ export default function HomeScreen() {
             <Text style={styles.statLabel}>Progression</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons name="triangle" size={16} color={COLORS.success} />
+            <Ionicons name="flag" size={16} color={COLORS.success} />
             <Text style={[styles.statValue, { color: COLORS.success }]}>
               {position}/30
             </Text>
-            <Text style={styles.statLabel}>Position</Text>
+            <Text style={styles.statLabel}>Niveau</Text>
           </View>
           <View style={styles.statCard}>
-            <Ionicons
-              name="calendar-outline"
-              size={16}
-              color={COLORS.textPrimary}
-            />
-            <Text style={styles.statValue}>{30 - dayNumber}</Text>
-            <Text style={styles.statLabel}>Restants</Text>
+            <Ionicons name="star" size={16} color={COLORS.gold} />
+            <Text style={[styles.statValue, { color: COLORS.gold }]}>
+              {score}
+            </Text>
+            <Text style={styles.statLabel}>Score</Text>
           </View>
           <View style={styles.statCard}>
             <Ionicons
@@ -182,7 +281,7 @@ export default function HomeScreen() {
           <View style={styles.loggedBox}>
             <View style={styles.loggedLeft}>
               <Ionicons
-                name="checkmark-circle-outline"
+                name="checkmark-circle"
                 size={18}
                 color={COLORS.textSecondary}
               />
@@ -190,7 +289,12 @@ export default function HomeScreen() {
                 Loggé : {todayLog.count} {user?.addiction?.unit}
               </Text>
             </View>
-            <TouchableOpacity onPress={() => setLogModal(true)}>
+            <TouchableOpacity
+              onPress={() => {
+                setCount(todayLog.count.toString());
+                setLogModal(true);
+              }}
+            >
               <Text style={styles.editLog}>Modifier</Text>
             </TouchableOpacity>
           </View>
@@ -380,12 +484,112 @@ const styles = StyleSheet.create({
     borderColor: COLORS.goldBorder,
     alignItems: "center",
   },
+  motivationBox2: {
+    padding: SPACING.md,
+    gap: 5,
+    marginBottom: SPACING.md,
+    borderColor: COLORS.goldBorder,
+    alignItems: "center",
+  },
   motivationText: {
     color: COLORS.gold,
     fontSize: FONT_SIZE.md,
     fontWeight: "600",
     textAlign: "center",
     lineHeight: 20,
+  },
+  motivationText2: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.md,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  combinedBox: {
+    backgroundColor: COLORS.bgCard,
+    borderRadius: RADIUS.md,
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: COLORS.bgCardBorder,
+    overflow: "hidden",
+  },
+  timerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.lg,
+  },
+  timerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
+  combinedSeparator: {
+    height: 1,
+    backgroundColor: COLORS.bgCardBorder,
+  },
+  relapseRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.lg,
+  },
+  timerLabel: {
+    color: COLORS.gold,
+    fontWeight: FONT_WEIGHT.black,
+    fontSize: FONT_SIZE.md,
+  },
+  timerScorePill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: COLORS.bgCard,
+    borderRadius: RADIUS.full,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: COLORS.goldBorder,
+  },
+  timerScore: {
+    color: COLORS.gold,
+    fontWeight: FONT_WEIGHT.black,
+    fontSize: FONT_SIZE.sm,
+  },
+  relapseText: {
+    color: COLORS.danger,
+    fontSize: FONT_SIZE.md,
+    fontWeight: FONT_WEIGHT.bold,
+  },
+  relapseBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(156,53,40,0.15)",
+    borderRadius: RADIUS.sm,
+    paddingHorizontal: SPACING.sm + 2,
+    paddingVertical: SPACING.xs + 2,
+  },
+  relapseBtnText: {
+    color: COLORS.danger,
+    fontWeight: FONT_WEIGHT.black,
+    fontSize: FONT_SIZE.md,
+  },
+  relapseCountPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: RADIUS.full,
+    borderWidth: 1,
+    borderColor: "rgba(156,53,40,0.3)",
+  },
+  relapseCountText: {
+    color: COLORS.danger,
+    fontSize: FONT_SIZE.xs,
+    fontWeight: FONT_WEIGHT.black,
   },
   statsRow: { flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.md },
   statCard: {
