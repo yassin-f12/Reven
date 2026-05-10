@@ -11,12 +11,12 @@ export const mockLogs: DayLog[] = [
   { day: 7, count: 0, date: "2026-05-07" },
 ];
 
+// Se met à jour automatiquement avec les nouveaux trophées
 export const mockUnlockedTrophies = TROPHY_DEFS.map((t) => t.id);
 
 export const mockStats = {
-  position: 7,
+  position: 10, // ← changé pour tester le marqueur niveau 10
   streak: 3,
-
   logs: [
     { day: 1, count: 0, date: "2026-05-01" },
     { day: 2, count: 1, date: "2026-05-02" },
