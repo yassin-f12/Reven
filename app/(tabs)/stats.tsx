@@ -18,22 +18,14 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-// import { mockStats } from "@/src/mocks/testData";
 
 export default function StatsScreen() {
   const user = useStore((s) => s.user);
   const logs = useStore((s) => s.logs);
   const position = useStore((s) => s.position);
   const streak = useStore((s) => s.streak);
+  const score = useStore((s) => s.score);
   const reset = useStore((s) => s.reset);
-
-  //////////////////////////////////////////////////////////
-  // const DEBUG = true;
-  // const user = useStore((s) => s.user);
-  // const position = DEBUG ? mockStats.position : useStore((s) => s.position);
-  // const streak = DEBUG ? mockStats.streak : useStore((s) => s.streak);
-  // const logs = DEBUG ? mockStats.logs : useStore((s) => s.logs);
-  ////////////////////////////////////////////////////////////////
 
   const cleanDays = logs.filter((l: DayLog) => l.count === 0).length;
   const totalConsumed = logs.reduce(
@@ -70,10 +62,10 @@ export default function StatsScreen() {
     icon: IoniconsName;
   }[] = [
     {
-      label: "Position",
+      label: "Niveau",
       value: `${position}/30`,
       color: COLORS.success,
-      icon: "map",
+      icon: "flag",
     },
     {
       label: "Streak actuel",
@@ -104,6 +96,12 @@ export default function StatsScreen() {
       value: `${logs.length}/30`,
       color: COLORS.info,
       icon: "calendar",
+    },
+    {
+      label: "Score total",
+      value: `${score} pts`,
+      color: COLORS.gold,
+      icon: "star",
     },
   ];
 
@@ -178,7 +176,7 @@ export default function StatsScreen() {
             });
             return (
               <View key={l.day} style={styles.logRow}>
-                <Text style={styles.logDay}>J{l.day}</Text>
+                <Text style={styles.logDay}>N{l.day}</Text>
                 <Text style={styles.logDate}>{date}</Text>
                 <View style={[styles.logCount]}>
                   <Ionicons

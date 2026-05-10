@@ -10,25 +10,22 @@ import {
 import { Trophy } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
-// import { mockUnlockedTrophies } from "@/src/mocks/testData";
 
 const TROPHY_ICONS: Record<string, IoniconsName> = {
   t1: "leaf",
   t2: "flame",
   t3: "flash",
-  t4: "heart-half",
-  t5: "sparkles",
-  t6: "trophy",
-  t7: "medal",
-  t8: "barbell",
+  t4: "extension-puzzle",
+  t5: "heart-circle",
+  t6: "shield",
+  t7: "star",
+  t8: "trophy",
+  t9: "diamond",
+  t10: "barbell",
 };
 
 export default function TrophiesScreen() {
   const unlockedTrophies = useStore((s) => s.unlockedTrophies);
-
-  /////////////////////////////////////////////////
-  // const unlockedTrophies = mockUnlockedTrophies;
-  /////////////////////////////////////////////////
 
   const streak = useStore((s) => s.streak);
   const logs = useStore((s) => s.logs);
