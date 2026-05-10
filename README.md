@@ -32,7 +32,7 @@ Scanner le QR avec **Expo Go** sur iOS ou Android.
 Scanner le QR code avec **Expo Go** sur iOS ou Android, ou ouvrir directement :
 [Ouvrir dans Expo Go](https://expo.dev/preview/update?message=update+icon&updateRuntimeVersion=1.0.0&createdAt=2026-05-10T13%3A27%3A30.403Z&slug=exp&projectId=d70b276e-fefc-4133-a759-032ff5d02255&group=71d212c6-5dc3-4257-b251-35df64bab325)
 
-![Scanner pour ouvrir dans Expo Go](images/qrcode_expo.png)
+![Scanner pour ouvrir dans Expo Go](assets/images/qrcode_expo.png)
 
 ## Niveaux
 
