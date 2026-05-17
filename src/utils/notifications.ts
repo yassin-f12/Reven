@@ -3,8 +3,8 @@ import * as Notifications from "expo-notifications";
 import { Platform } from "react-native";
 import { NotificationSettings } from "@/types";
 
-const NOTIF_ID_REMINDER = "reven-daily-reminder";
 const NOTIF_ID_MOTIVATION = "reven-daily-motivation";
+const NOTIF_ID_EVENING = "reven-daily-evening";
 
 const MOTIVATION_MESSAGES = [
   "Tu grimpes chaque jour un peu plus haut.",
@@ -12,6 +12,8 @@ const MOTIVATION_MESSAGES = [
   "Rappelle-toi pourquoi tu as commencé.",
   "La version future de toi te remercie.",
   "Un jour à la fois. Tu y arrives !",
+  "Chaque matin est une nouvelle chance de grimper.",
+  "Ta force est plus grande que ta faiblesse.",
 ];
 
 Notifications.setNotificationHandler({
@@ -38,8 +40,8 @@ export async function requestNotificationPermission(): Promise<boolean> {
   if (finalStatus !== "granted") return false;
 
   if (Platform.OS === "android") {
-    await Notifications.setNotificationChannelAsync("default", {
-      name: "default",
+    await Notifications.setNotificationChannelAsync("reven-channel", {
+      name: "Reven",
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
     });
@@ -61,9 +63,10 @@ export async function scheduleAllNotifications(
   await Notifications.scheduleNotificationAsync({
     identifier: NOTIF_ID_MOTIVATION,
     content: {
-      title: "Reven",
+      title: "Reven 🧗",
       body: randomMsg,
       sound: false,
+      ...(Platform.OS === "android" && { channelId: "reven-channel" }),
     },
     trigger: {
       type: Notifications.SchedulableTriggerInputTypes.DAILY,
@@ -72,19 +75,18 @@ export async function scheduleAllNotifications(
     },
   });
 
-  if (settings.hour !== 12 || settings.minute !== 0) {
-    await Notifications.scheduleNotificationAsync({
-      identifier: NOTIF_ID_REMINDER,
-      content: {
-        title: "Reven — Et aujourd'hui ?",
-        body: "N'oublie pas de logger ta journée. Chaque jour compte !",
-        sound: true,
-      },
-      trigger: {
-        type: Notifications.SchedulableTriggerInputTypes.DAILY,
-        hour: settings.hour,
-        minute: settings.minute,
-      },
-    });
-  }
+  await Notifications.scheduleNotificationAsync({
+    identifier: NOTIF_ID_EVENING,
+    content: {
+      title: "Reven — Et aujourd'hui ? 📋",
+      body: "N'oublie pas de logger ta journée. Chaque jour compte !",
+      sound: true,
+      ...(Platform.OS === "android" && { channelId: "reven-channel" }),
+    },
+    trigger: {
+      type: Notifications.SchedulableTriggerInputTypes.DAILY,
+      hour: 21,
+      minute: 0,
+    },
+  });
 }
