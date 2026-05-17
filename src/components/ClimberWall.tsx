@@ -1,7 +1,7 @@
 import { COLORS } from "@/src/utils/theme";
 import { Avatar } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import {
   Animated,
   Dimensions,
@@ -19,31 +19,50 @@ const { width: SCREEN_W } = Dimensions.get("window");
 const TOTAL_STEPS = 30;
 const SUMMIT_ZONE = 0.8;
 const LEVEL_MILESTONES = [5, 10, 15, 20, 25, 30];
-interface Props {
+
+const WALL_IMAGES: Record<number, any> = {
+  0: require("@/assets/images/wall.jpeg"),
+  5: require("@/assets/images/Wall_4.jpeg"),
+  10: require("@/assets/images/Wall_5.jpeg"),
+  15: require("@/assets/images/Wall_6.jpeg"),
+  20: require("@/assets/images/Wall_7.jpeg"),
+  25: require("@/assets/images/Wall_8.jpeg"),
+};
+
+function getWallImage(position: number): any {
+  if (position >= 25) return WALL_IMAGES[25];
+  if (position >= 20) return WALL_IMAGES[20];
+  if (position >= 15) return WALL_IMAGES[15];
+  if (position >= 10) return WALL_IMAGES[10];
+  if (position >= 5) return WALL_IMAGES[5];
+  return WALL_IMAGES[0];
+}
+interface LevelMarkerProps {
+  lvl: number;
   position: number;
-  avatar: Avatar | null;
-  streak: number;
-  fullWidth?: boolean;
+  wallH: number;
+  alreadySeen: boolean;
+  onAnimationPlayed: (lvl: number) => void;
 }
 
 function LevelMarker({
   lvl,
   position,
   wallH,
-}: {
-  lvl: number;
-  position: number;
-  wallH: number;
-}) {
+  alreadySeen,
+  onAnimationPlayed,
+}: LevelMarkerProps) {
   const reached = position >= lvl;
-  const prevReached = useRef(position >= lvl);
+  const prevReached = useRef(alreadySeen);
 
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const scaleAnim = useRef(
+    new Animated.Value(alreadySeen && reached ? 1.4 : 1),
+  ).current;
   const glowAnim = useRef(new Animated.Value(0)).current;
   const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (reached && !prevReached.current) {
+    if (reached && !prevReached.current && !alreadySeen) {
       Animated.sequence([
         Animated.spring(scaleAnim, {
           toValue: 2.2,
@@ -99,12 +118,13 @@ function LevelMarker({
         { iterations: 4 },
       );
       glow.start();
+
+      onAnimationPlayed(lvl);
     }
 
-    if (reached && !prevReached.current) {
+    if (reached) {
       prevReached.current = true;
-    }
-    if (!reached) {
+    } else {
       prevReached.current = false;
       scaleAnim.setValue(1);
       glowAnim.setValue(0);
@@ -119,7 +139,6 @@ function LevelMarker({
     inputRange: [0, 1],
     outputRange: ["0deg", "30deg"],
   });
-
   const glowOpacity = glowAnim.interpolate({
     inputRange: [0, 1],
     outputRange: [0, 0.9],
@@ -139,7 +158,7 @@ function LevelMarker({
         <Ionicons
           name="flag"
           size={10}
-          color={reached ? COLORS.gold : "rgba(255,255,255)"}
+          color={reached ? COLORS.gold : "rgba(255,255,255,1)"}
         />
       </Animated.View>
       <Text style={[markerStyles.label, reached && markerStyles.labelReached]}>
@@ -158,10 +177,7 @@ const markerStyles = StyleSheet.create({
     gap: 2,
     zIndex: 11,
   },
-  inner: {
-    alignItems: "center",
-    justifyContent: "center",
-  },
+  inner: { alignItems: "center", justifyContent: "center" },
   glow: {
     position: "absolute",
     left: -4,
@@ -170,15 +186,16 @@ const markerStyles = StyleSheet.create({
     borderRadius: 9,
     backgroundColor: COLORS.gold,
   },
-  label: {
-    color: "rgba(255,255,255)",
-    fontSize: 7,
-    fontWeight: "900",
-  },
-  labelReached: {
-    color: COLORS.gold,
-  },
+  label: { color: "rgba(255,255,255,1)", fontSize: 7, fontWeight: "900" },
+  labelReached: { color: COLORS.gold },
 });
+
+interface Props {
+  position: number;
+  avatar: Avatar | null;
+  streak: number;
+  fullWidth?: boolean;
+}
 
 export default function ClimberWall({
   position,
@@ -188,8 +205,8 @@ export default function ClimberWall({
 }: Props) {
   const reset = useStore((s) => s.reset);
   const user = useStore((s) => s.user);
-
-  const confettiRef = useRef<any>(null);
+  const animationsSeenForLevels = useStore((s) => s.animationsSeenForLevels);
+  const markLevelAnimationSeen = useStore((s) => s.markLevelAnimationSeen);
 
   const WALL_W = fullWidth ? SCREEN_W - 40 : 160;
   const WALL_H = fullWidth ? 400 : 500;
@@ -294,6 +311,8 @@ export default function ClimberWall({
     outputRange: [0, 0.6],
   });
 
+  const wallImage = getWallImage(position);
+
   return (
     <View style={[styles.container, { marginBottom: 12 }]}>
       <View
@@ -304,7 +323,7 @@ export default function ClimberWall({
         ]}
       >
         <ImageBackground
-          source={require("@/assets/images/wall.jpeg")}
+          source={wallImage}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
@@ -407,7 +426,14 @@ export default function ClimberWall({
         </View>
 
         {LEVEL_MILESTONES.map((lvl) => (
-          <LevelMarker key={lvl} lvl={lvl} position={position} wallH={WALL_H} />
+          <LevelMarker
+            key={lvl}
+            lvl={lvl}
+            position={position}
+            wallH={WALL_H}
+            alreadySeen={animationsSeenForLevels.includes(lvl)}
+            onAnimationPlayed={markLevelAnimationSeen}
+          />
         ))}
       </View>
     </View>
@@ -482,7 +508,7 @@ const styles = StyleSheet.create({
     position: "absolute",
     top: -8,
     right: -14,
-    backgroundColor: "#ff4500",
+    backgroundColor: COLORS.orange,
     borderRadius: 10,
     paddingHorizontal: 4,
     paddingVertical: 1,
@@ -508,7 +534,7 @@ const styles = StyleSheet.create({
     bottom: 8,
     top: 8,
     width: 4,
-    backgroundColor: "rgba(255,255,255)",
+    backgroundColor: "rgba(255,255,255,1)",
     borderRadius: 2,
     zIndex: 10,
     justifyContent: "flex-end",
