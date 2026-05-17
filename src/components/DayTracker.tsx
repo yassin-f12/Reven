@@ -7,11 +7,12 @@ import { COLORS } from "@/src/utils/theme";
 interface Props {
   logs: DayLog[];
   currentDay: number;
+  relapseCount: number;
 }
 
 type Status = "clean" | "ok" | "bad" | "fail" | "today" | "missed" | "future";
 
-export default function DayTracker({ logs, currentDay }: Props) {
+export default function DayTracker({ logs, currentDay, relapseCount }: Props) {
   const days = Array.from({ length: 30 }, (_, i) => i + 1);
 
   const getDayStatus = (day: number): Status => {
@@ -47,12 +48,7 @@ export default function DayTracker({ logs, currentDay }: Props) {
     }
   };
 
-  const getIcon = (
-    status: Status,
-  ): {
-    name: IoniconsName;
-    size: number;
-  } => {
+  const getIcon = (status: Status): { name: IoniconsName; size: number } => {
     switch (status) {
       case "clean":
         return { name: "checkmark", size: 12 };
@@ -72,16 +68,15 @@ export default function DayTracker({ logs, currentDay }: Props) {
   };
 
   const milestoneIcons: Record<number, IoniconsName> = {
-    7: "flame",
-    15: "flash",
+    5: "flame",
+    10: "flash",
+    15: "medal",
+    20: "shield",
+    25: "star",
     30: "trophy",
   };
 
-  const legend: {
-    color: string;
-    label: string;
-    icon: IoniconsName;
-  }[] = [
+  const legend: { color: string; label: string; icon: IoniconsName }[] = [
     { color: COLORS.success, label: "Zéro", icon: "checkmark" },
     { color: COLORS.warning, label: "1-2", icon: "reorder-two-outline" },
     { color: COLORS.danger, label: "3-5", icon: "arrow-down" },
@@ -98,6 +93,7 @@ export default function DayTracker({ logs, currentDay }: Props) {
         </View>
         <Ionicons name="arrow-forward" size={16} color={COLORS.textSecondary} />
       </View>
+
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
@@ -108,6 +104,8 @@ export default function DayTracker({ logs, currentDay }: Props) {
           const color = getColor(status);
           const icon = getIcon(status);
           const milestoneIcon = milestoneIcons[day];
+          const isToday = day === currentDay;
+
           return (
             <View key={day} style={styles.dayWrap}>
               <View style={styles.milestoneTop}>
@@ -120,7 +118,7 @@ export default function DayTracker({ logs, currentDay }: Props) {
                 style={[
                   styles.dayCell,
                   { backgroundColor: color + "33", borderColor: color },
-                  status === "today" && styles.todayCell,
+                  isToday && styles.todayCell,
                 ]}
               >
                 <Ionicons name={icon.name} size={icon.size} color={color} />
@@ -129,15 +127,22 @@ export default function DayTracker({ logs, currentDay }: Props) {
               <Text
                 style={[
                   styles.dayNum,
-                  { color: status === "today" ? COLORS.info : "#666" },
+                  { color: isToday ? COLORS.info : "#666" },
                 ]}
               >
                 {day}
               </Text>
+
+              {isToday && relapseCount > 0 && (
+                <View style={styles.relapseBadge}>
+                  <Text style={styles.relapseBadgeText}><Ionicons name="fitness" size={9} color={COLORS.danger} /> {relapseCount}</Text>
+                </View>
+              )}
             </View>
           );
         })}
       </ScrollView>
+
       <View style={styles.legend}>
         {legend.map((l) => (
           <View key={l.label} style={styles.legendItem}>
@@ -175,7 +180,7 @@ const styles = StyleSheet.create({
   scroll: { paddingBottom: 4, gap: 6 },
   dayWrap: { alignItems: "center", width: 32 },
   milestoneTop: {
-    height: 12, 
+    height: 12,
     alignItems: "center",
     justifyContent: "center",
     marginBottom: 2,
@@ -195,6 +200,15 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   dayNum: { fontSize: 9, marginTop: 2, fontWeight: "600" },
+  relapseBadge: {
+    marginTop: 2,
+    backgroundColor: COLORS.danger + "22",
+    borderRadius: 6,
+    paddingHorizontal: 2,
+    paddingVertical: 1,
+    alignItems: "center",
+  },
+  relapseBadgeText: { color: COLORS.danger, fontSize: 7, fontWeight: "900" },
   legend: {
     flexDirection: "row",
     flexWrap: "wrap",

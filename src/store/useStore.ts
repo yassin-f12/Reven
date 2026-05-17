@@ -6,10 +6,12 @@ import {
   computeLevel,
   computeScoreDelta,
   computeStreak,
+  getTickIntervalSecondsFinal,
+  computeTicksDue,
 } from "@/src/utils/calculations";
 
 const STORAGE_KEY = "reven_data";
-const POINTS_PER_HOUR = 50;
+const POINTS_PER_TICK = 50;
 
 export const TROPHY_DEFS: Trophy[] = [
   {
@@ -38,7 +40,7 @@ export const TROPHY_DEFS: Trophy[] = [
   },
   {
     id: "t5",
-    iconName: "triangle",
+    iconName: "medal",
     title: "Niveau 15",
     desc: "Atteindre le niveau 15",
   },
@@ -74,7 +76,11 @@ export const TROPHY_DEFS: Trophy[] = [
   },
 ];
 
-function computeTrophies(logs: DayLog[], streak: number, level: number): string[] {
+function computeTrophies(
+  logs: DayLog[],
+  streak: number,
+  level: number,
+): string[] {
   return TROPHY_DEFS.filter((t) => {
     if (t.id === "t1") return level >= 1;
     if (t.id === "t2") return streak >= 3;
@@ -89,15 +95,54 @@ function computeTrophies(logs: DayLog[], streak: number, level: number): string[
     return false;
   }).map((t) => t.id);
 }
-interface Store extends AppState {
+
+function todayKey(): string {
+  return new Date().toISOString().split("T")[0];
+}
+
+async function persist(s: Store): Promise<void> {
+  try {
+    await AsyncStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        user: s.user,
+        logs: s.logs,
+        startDate: s.startDate,
+        score: s.score,
+        lastTickTime: s.lastTickTime,
+        notificationSettings: s.notificationSettings,
+        scoreBeforeTodayLog: s.scoreBeforeTodayLog,
+        relapseCount: s.relapseCount,
+        relapseCountDate: s.relapseCountDate,
+        dailyCount: s.dailyCount,
+        dailyCountDate: s.dailyCountDate,
+        animationsSeenForLevels: s.animationsSeenForLevels,
+      }),
+    );
+  } catch (e) {
+    console.error("Persist error", e);
+  }
+}
+interface ExtendedAppState extends AppState {
+  dailyCount: number;
+  dailyCountDate: string;
+  relapseCount: number;
+  relapseCountDate: string;
+  animationsSeenForLevels: number[];
+}
+interface Store extends ExtendedAppState {
   setUser: (user: User) => Promise<void>;
   logDay: (count: number) => Promise<void>;
   reportRelapse: () => Promise<void>;
+  decrementDailyCount: () => Promise<void>;
   tickHourly: () => Promise<void>;
   clearNewTrophy: () => void;
   hydrate: () => Promise<void>;
   reset: () => Promise<void>;
   updateNotificationSettings: (settings: NotificationSettings) => Promise<void>;
+  setDailyCount: (count: number) => Promise<void>;
+  markLevelAnimationSeen: (level: number) => Promise<void>;
+  checkMidnightResets: () => Promise<void>;
 }
 
 const useStore = create<Store>((set, get) => ({
@@ -115,32 +160,41 @@ const useStore = create<Store>((set, get) => ({
   notificationSettings: { enabled: false, hour: 20, minute: 0 },
   scoreBeforeTodayLog: null,
   relapseCount: 0,
+  relapseCountDate: todayKey(),
+  dailyCount: 0,
+  dailyCountDate: todayKey(),
+  animationsSeenForLevels: [],
 
-  setUser: async (user) => {
-    const startDate = new Date().toISOString();
-    const lastTickTime = new Date().toISOString();
-    set({ user, startDate, dayNumber: 1, score: 0, lastTickTime, position: 0 });
-    await AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        user,
-        logs: [],
-        startDate,
-        score: 0,
-        lastTickTime,
-        notificationSettings: { enabled: false, hour: 20, minute: 0 },
-      }),
-    );
+  checkMidnightResets: async () => {
+    const state = get();
+    const today = todayKey();
+    const updates: Partial<ExtendedAppState> = {};
+
+    if ((state.relapseCountDate || today) !== today) {
+      updates.relapseCount = 0;
+      updates.relapseCountDate = today;
+    }
+    if ((state.dailyCountDate || today) !== today) {
+      updates.dailyCount = 0;
+      updates.dailyCountDate = today;
+    }
+
+    if (Object.keys(updates).length === 0) return;
+    set(updates as any);
+    await persist(get());
   },
 
   tickHourly: async () => {
     const state = get();
     if (!state.lastTickTime) return;
-    const elapsed =
-      (Date.now() - new Date(state.lastTickTime).getTime()) / 1000 / 60;
-    if (elapsed < 60) return;
 
-    const newScore = Math.max(0, state.score + POINTS_PER_HOUR);
+    await state.checkMidnightResets();
+
+    const interval = getTickIntervalSecondsFinal(state.position);
+    const ticksDue = computeTicksDue(state.lastTickTime, interval);
+    if (ticksDue <= 0) return;
+
+    const newScore = Math.max(0, state.score + ticksDue * POINTS_PER_TICK);
     const level = computeLevel(newScore);
     const unlockedTrophies = computeTrophies(state.logs, state.streak, level);
     const newlyUnlocked = unlockedTrophies.find(
@@ -158,17 +212,33 @@ const useStore = create<Store>((set, get) => ({
       unlockedTrophies,
       newTrophy,
     });
-    await AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        user: state.user,
-        logs: state.logs,
-        startDate: state.startDate,
-        score: newScore,
-        lastTickTime,
-        notificationSettings: state.notificationSettings,
-      }),
-    );
+    await persist(get());
+  },
+
+  setUser: async (user) => {
+    const now = new Date().toISOString();
+    const today = todayKey();
+    set({
+      user,
+      startDate: now,
+      dayNumber: 1,
+      score: 0,
+      lastTickTime: now,
+      position: 0,
+      relapseCount: 0,
+      relapseCountDate: today,
+      dailyCount: 0,
+      dailyCountDate: today,
+      animationsSeenForLevels: [],
+      logs: [],
+      unlockedTrophies: [],
+      streak: 0,
+      newTrophy: null,
+      todayLog: null,
+      scoreBeforeTodayLog: null,
+      notificationSettings: { enabled: false, hour: 20, minute: 0 },
+    });
+    await persist(get());
   },
 
   logDay: async (count) => {
@@ -183,7 +253,6 @@ const useStore = create<Store>((set, get) => ({
 
     if (alreadyLogged) {
       baseScore = state.scoreBeforeTodayLog ?? state.score;
-
       newLogs = state.logs.map((l) =>
         new Date(l.date).toDateString() === today ? { ...l, count } : l,
       );
@@ -195,11 +264,10 @@ const useStore = create<Store>((set, get) => ({
       ];
     }
 
-    const delta = computeScoreDelta(count, state.user?.addiction?.id);
+    const delta = computeScoreDelta(count, undefined, state.position);
     const newScore = Math.max(0, baseScore + delta);
     const streak = computeStreak(newLogs);
     const level = computeLevel(newScore);
-
     const unlockedTrophies = computeTrophies(newLogs, streak, level);
     const newlyUnlocked = unlockedTrophies.find(
       (id) => !state.unlockedTrophies.includes(id),
@@ -209,6 +277,9 @@ const useStore = create<Store>((set, get) => ({
       : null;
     const todayLog =
       newLogs.find((l) => new Date(l.date).toDateString() === today) ?? null;
+    const scoreBeforeTodayLog = alreadyLogged
+      ? state.scoreBeforeTodayLog
+      : baseScore;
 
     set({
       logs: newLogs,
@@ -218,112 +289,87 @@ const useStore = create<Store>((set, get) => ({
       unlockedTrophies,
       newTrophy,
       todayLog,
-      lastTickTime: state.lastTickTime,
-      scoreBeforeTodayLog: alreadyLogged
-        ? state.scoreBeforeTodayLog
-        : baseScore,
+      scoreBeforeTodayLog,
     });
-
-    await AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        user: state.user,
-        logs: newLogs,
-        startDate: state.startDate,
-        score: newScore,
-        lastTickTime: state.lastTickTime,
-        notificationSettings: state.notificationSettings,
-        scoreBeforeTodayLog: alreadyLogged
-          ? state.scoreBeforeTodayLog
-          : baseScore,
-        relapseCount: state.relapseCount,
-      }),
-    );
+    await persist(get());
   },
 
   reportRelapse: async () => {
     const state = get();
-    const lastTickTime = new Date().toISOString();
     const relapseCount = (state.relapseCount ?? 0) + 1;
-    set({ lastTickTime, relapseCount });
-    await AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        user: state.user,
-        logs: state.logs,
-        startDate: state.startDate,
-        score: state.score,
-        lastTickTime,
-        notificationSettings: state.notificationSettings,
-        scoreBeforeTodayLog: state.scoreBeforeTodayLog,
-        relapseCount,
-      }),
-    );
+    const lastTickTime = new Date().toISOString(); 
+    set({ relapseCount, lastTickTime });
+    await persist(get());
+  },
+
+  decrementDailyCount: async () => {
+    const state = get();
+    if (state.dailyCount <= 0) return;
+    set({ dailyCount: state.dailyCount - 1 });
+    await persist(get());
+  },
+
+  setDailyCount: async (count) => {
+    const today = todayKey();
+    set({ dailyCount: count, dailyCountDate: today });
+    await persist(get());
+  },
+
+  markLevelAnimationSeen: async (level) => {
+    const state = get();
+    if (state.animationsSeenForLevels.includes(level)) return;
+    set({ animationsSeenForLevels: [...state.animationsSeenForLevels, level] });
+    await persist(get());
   },
 
   clearNewTrophy: () => set({ newTrophy: null }),
 
   updateNotificationSettings: async (settings) => {
     set({ notificationSettings: settings });
-    const state = get();
-    await AsyncStorage.setItem(
-      STORAGE_KEY,
-      JSON.stringify({
-        user: state.user,
-        logs: state.logs,
-        startDate: state.startDate,
-        score: state.score,
-        lastTickTime: state.lastTickTime,
-        notificationSettings: settings,
-      }),
-    );
+    await persist(get());
   },
 
   hydrate: async () => {
     try {
       const raw = await AsyncStorage.getItem(STORAGE_KEY);
-      if (raw) {
-        const parsed = JSON.parse(raw);
-        const {
-          user,
-          logs,
-          startDate,
-          score,
-          lastTickTime,
-          notificationSettings,
-          scoreBeforeTodayLog,
-          relapseCount,
-        } = parsed;
-        const safeLogs: DayLog[] = logs || [];
-        const safeScore: number = score || 0;
-        const streak = computeStreak(safeLogs);
-        const level = computeLevel(safeScore);
-        const unlockedTrophies = computeTrophies(safeLogs, streak, level);
-        const today = new Date().toDateString();
-        const todayLog =
-          safeLogs.find((l) => new Date(l.date).toDateString() === today) ??
-          null;
-        const dayNumber = computeDayNumber(startDate);
-        set({
-          user,
-          logs: safeLogs,
-          startDate,
-          score: safeScore,
-          lastTickTime: lastTickTime || null,
-          position: level,
-          streak,
-          unlockedTrophies,
-          todayLog,
-          dayNumber,
-          notificationSettings: notificationSettings || {
-            enabled: false,
-            hour: 20,
-            minute: 0,
-          },
-          scoreBeforeTodayLog: scoreBeforeTodayLog ?? null,
-          relapseCount: relapseCount ?? 0,
-        });
-      }
+      if (!raw) return;
+
+      const p = JSON.parse(raw);
+      const today = todayKey();
+      const safeLogs = p.logs || [];
+      const safeScore = p.score || 0;
+      const streak = computeStreak(safeLogs);
+      const level = computeLevel(safeScore);
+      const todayDateStr = new Date().toDateString();
+
+      set({
+        user: p.user ?? null,
+        logs: safeLogs,
+        startDate: p.startDate ?? null,
+        score: safeScore,
+        lastTickTime: p.lastTickTime ?? null,
+        position: level,
+        streak,
+        unlockedTrophies: computeTrophies(safeLogs, streak, level),
+        todayLog:
+          safeLogs.find(
+            (l: DayLog) => new Date(l.date).toDateString() === todayDateStr,
+          ) ?? null,
+        dayNumber: computeDayNumber(p.startDate),
+        notificationSettings: p.notificationSettings ?? {
+          enabled: false,
+          hour: 20,
+          minute: 0,
+        },
+        scoreBeforeTodayLog: p.scoreBeforeTodayLog ?? null,
+        relapseCount: p.relapseCount ?? 0,
+        relapseCountDate: p.relapseCountDate ?? today,
+        dailyCount: p.dailyCount ?? 0,
+        dailyCountDate: p.dailyCountDate ?? today,
+        animationsSeenForLevels: p.animationsSeenForLevels ?? [],
+      });
+
+      await get().checkMidnightResets();
     } catch (e) {
       console.error("Hydrate error", e);
     }
@@ -331,6 +377,7 @@ const useStore = create<Store>((set, get) => ({
 
   reset: async () => {
     await AsyncStorage.removeItem(STORAGE_KEY);
+    const today = todayKey();
     set({
       user: null,
       logs: [],
@@ -345,6 +392,11 @@ const useStore = create<Store>((set, get) => ({
       newTrophy: null,
       scoreBeforeTodayLog: null,
       relapseCount: 0,
+      relapseCountDate: today,
+      dailyCount: 0,
+      dailyCountDate: today,
+      animationsSeenForLevels: [],
+      notificationSettings: { enabled: false, hour: 20, minute: 0 },
     });
   },
 }));

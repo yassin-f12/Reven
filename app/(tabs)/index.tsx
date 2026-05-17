@@ -16,14 +16,17 @@ import {
   Image,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+
 import ClimberWall from "@/src/components/ClimberWall";
 import DayTracker from "@/src/components/DayTracker";
+import ChuteLiBreModal from "@/src/components/ChuteLiBreModal";
 import motivationsData from "@/src/data/motivations.json";
 import useStore from "@/src/store/useStore";
 import {
   getDeltaInfo,
   getSecondsUntilNextTick,
   computePointsToNextLevel,
+  getTickIntervalSecondsFinal,
 } from "@/src/utils/calculations";
 import {
   COLORS,
@@ -46,24 +49,40 @@ export default function HomeScreen() {
   const score = useStore((s) => s.score);
   const lastTickTime = useStore((s) => s.lastTickTime);
   const tickHourly = useStore((s) => s.tickHourly);
-  const [secondsLeft, setSecondsLeft] = useState(3600);
   const reportRelapse = useStore((s) => s.reportRelapse);
   const relapseCount = useStore((s) => s.relapseCount);
+  const dailyCount = useStore((s) => s.dailyCount);
+  const setDailyCount = useStore((s) => s.setDailyCount);
+  const decrementDailyCount = useStore((s) => s.decrementDailyCount);
 
   const insets = useSafeAreaInsets();
   const [logModal, setLogModal] = useState(false);
+  const [chuteModal, setChuteModal] = useState(false);
   const [count, setCount] = useState("");
+  const [secondsLeft, setSecondsLeft] = useState(3600);
+  const [objectifInput, setObjectifInput] = useState("");
+  const [objectifDefined, setObjectifDefined] = useState(false);
+
+  useEffect(() => {
+    if (dailyCount > 0) setObjectifDefined(true);
+  }, []);
+  useEffect(() => {
+    if (dailyCount === 0) {
+      setObjectifDefined(false);
+      setObjectifInput("");
+    }
+  }, [dailyCount]);
+
   const [motivation] = useState(() => {
-    const list = motivationsData.motivations;
-    return list[Math.floor(Math.random() * list.length)];
+    const l = motivationsData.motivations;
+    return l[Math.floor(Math.random() * l.length)];
   });
   const [relapseMotivation] = useState(() => {
-    const list = motivationsData.relapseMotivations;
-    return list[Math.floor(Math.random() * list.length)];
+    const l = motivationsData.relapseMotivations;
+    return l[Math.floor(Math.random() * l.length)];
   });
 
   const scrollRef = useRef<ScrollView>(null);
-
   useFocusEffect(
     useCallback(() => {
       scrollRef.current?.flashScrollIndicators();
@@ -72,72 +91,94 @@ export default function HomeScreen() {
 
   useEffect(() => {
     const update = () => {
-      setSecondsLeft(getSecondsUntilNextTick(lastTickTime));
+      setSecondsLeft(getSecondsUntilNextTick(lastTickTime, position));
       tickHourly();
     };
     update();
-    const interval = setInterval(update, 1000);
-    return () => clearInterval(interval);
-  }, [lastTickTime]);
+    const i = setInterval(update, 1000);
+    return () => clearInterval(i);
+  }, [lastTickTime, position]);
 
   const submitLog = () => {
-    const num = parseInt(count) || 0;
-    logDay(num);
+    logDay(parseInt(count) || 0);
     setLogModal(false);
     setCount("");
     Keyboard.dismiss();
   };
 
-  const deltaInfo = getDeltaInfo(parseInt(count) || 0, user?.addiction?.id);
+  const submitObjectif = () => {
+    const val = parseInt(objectifInput);
+    if (isNaN(val) || val < 0) return;
+    setDailyCount(val);
+    setObjectifDefined(true);
+    Keyboard.dismiss();
+  };
+
+  const deltaInfo = getDeltaInfo(parseInt(count) || 0, undefined, position);
+
+  const intervalLabel = (() => {
+    const secs = getTickIntervalSecondsFinal(position);
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    return m > 0 ? `${h}h${m.toString().padStart(2, "0")}` : `${h}h`;
+  })();
+
+  const remainingColor =
+    dailyCount === 0
+      ? COLORS.success
+      : dailyCount <= 2
+        ? COLORS.warning
+        : COLORS.textPrimary;
+
+  const timerWarning =
+    secondsLeft > 60
+      ? `${Math.floor(secondsLeft / 60)} min restantes`
+      : secondsLeft > 0
+        ? `${secondsLeft}s perdues`
+        : null;
 
   return (
-    <View style={styles.bg}>
+    <View style={s.bg}>
       <ScrollView
         ref={scrollRef}
         onScrollBeginDrag={Keyboard.dismiss}
         contentContainerStyle={[
-          styles.container,
+          s.container,
           { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 90 },
         ]}
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <View style={styles.header}>
-          <View style={{ gap: 5 }}>
-            <View style={styles.userRow}>
+        <View style={s.header}>
+          <View style={{ gap: 4 }}>
+            <View style={s.userRow}>
               <Image
                 source={user?.avatar?.image}
                 style={{ width: 35, height: 35 }}
               />
-              <Text style={styles.greeting}>Salut {user?.pseudo}</Text>
+              <Text style={s.greeting}>Salut {user?.pseudo}</Text>
             </View>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 2 }}
-            >
-              <Text style={styles.subGreeting}>
-                Niveau {position}/30 • {user?.addiction?.label}
+            <View style={s.profileRow}>
+              <Text style={s.subGreeting}>
+                Niveau {position}/30 • Cigarettes 
               </Text>
-              <Ionicons
-                name={user?.addiction?.iconName}
-                size={14}
-                color={COLORS.textSecondary}
-              />
+              <Ionicons name="logo-no-smoking" size={14} color={COLORS.textSecondary} />
             </View>
           </View>
-          <View style={styles.streakPill}>
+          <View style={s.streakPill}>
             <Ionicons name="flame" size={14} color={COLORS.orange} />
-            <Text style={styles.streakText}> {streak} jours</Text>
+            <Text style={s.streakText}> {streak} jours</Text>
           </View>
         </View>
 
-        <View style={styles.motivationBox}>
+        <View style={s.motivationBox}>
           <Ionicons
             name="chatbubble-ellipses"
-            size={24}
+            size={20}
             color={COLORS.gold}
-            style={{ marginBottom: 4 }}
+            style={{ marginBottom: 2 }}
           />
-          <Text style={styles.motivationText}>{motivation}</Text>
+          <Text style={s.motivationText}>{motivation}</Text>
         </View>
 
         <ClimberWall
@@ -147,146 +188,218 @@ export default function HomeScreen() {
           fullWidth
         />
 
-        <View style={styles.combinedBox}>
-          <View style={styles.timerRow}>
-            <View style={styles.timerLeft}>
-              <Ionicons name="timer" size={18} color={COLORS.gold} />
-              <View>
-                <Text style={styles.timerLabel}>
+        <View style={s.card}>
+          <View style={s.timerRow}>
+            <View style={s.timerLeft}>
+              <Ionicons name="timer" size={20} color={COLORS.gold} />
+              <View style={{ gap: 2 }}>
+                <Text style={s.timerLabel}>
                   {secondsLeft === 0
                     ? "Gain disponible !"
                     : `+50 pts dans ${Math.floor(secondsLeft / 60)}:${String(secondsLeft % 60).padStart(2, "0")}`}
                 </Text>
-                <View
-                  style={{ flexDirection: "row", alignItems: "center", gap: 4 }}
-                >
-                  {position < 30 ? (
-                    <Text
-                      style={[
-                        styles.timerLabel,
-                        { fontSize: 11, opacity: 0.75 },
-                      ]}
-                    >
-                      {`Niveau suivant dans ${computePointsToNextLevel(score)} pts`}
-                    </Text>
-                  ) : (
-                    <>
-                      <Text
-                        style={[
-                          styles.timerLabel,
-                          { fontSize: 11, opacity: 0.75 },
-                        ]}
-                      >
-                        Sommet atteint !
-                      </Text>
-                      <Ionicons
-                        name="trophy"
-                        size={11}
-                        color={COLORS.gold}
-                        style={{ opacity: 0.75 }}
-                      />
-                    </>
-                  )}
-                </View>
+                <Text style={[s.timerLabel, { fontSize: 10, opacity: 0.6 }]}>
+                  {`Intervalle : ${intervalLabel} • actif 7h-23h`}
+                </Text>
+                {position < 30 ? (
+                  <Text
+                    style={[s.timerLabel, { fontSize: 11, opacity: 0.75 }]}
+                  >{`Niveau suivant dans ${computePointsToNextLevel(score)} pts`}</Text>
+                ) : (
+                  <Text style={[s.timerLabel, { fontSize: 11, opacity: 0.75 }]}>
+                    Sommet atteint ! 
+                  </Text>
+                )}
               </View>
             </View>
-            <View style={styles.timerScorePill}>
+            <View style={s.scorePill}>
               <Ionicons name="star" size={12} color={COLORS.gold} />
-              <Text style={styles.timerScore}>
-                {secondsLeft === 0 ? score : score + 50} pts
-              </Text>
+              <Text style={s.scoreText}>{score} pts</Text>
             </View>
-          </View>
-
-          <View style={styles.combinedSeparator} />
-
-          <View style={styles.relapseRow}>
-            <View
-              style={{ flexDirection: "row", alignItems: "center", gap: 6 }}
-            >
-              <Text style={styles.relapseText}>Tu as fait une chute ?</Text>
-              {relapseCount > 0 && (
-                <View style={styles.relapseCountPill}>
-                  <Ionicons name="fitness" size={11} color={COLORS.danger} />
-                  <Text style={styles.relapseCountText}>{relapseCount}</Text>
-                </View>
-              )}
-            </View>
-            <TouchableOpacity onPress={reportRelapse} style={styles.relapseBtn}>
-              <Ionicons name="fitness" size={14} color={COLORS.danger} />
-              <Text style={styles.relapseBtnText}>Oui</Text>
-            </TouchableOpacity>
-          </View>
-          <View style={styles.motivationBox2}>
-            <Ionicons
-              name="chatbubble-ellipses"
-              size={24}
-              color={COLORS.textMuted}
-              style={{ marginBottom: 4 }}
-            />
-            <Text style={styles.motivationText2}>{relapseMotivation}</Text>
           </View>
         </View>
 
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="trending-up" size={16} color={COLORS.textPrimary} />
-            <Text style={styles.statValue}>
-              {Math.round((position / 30) * 100)}%
-            </Text>
-            <Text style={styles.statLabel}>Progression</Text>
+        <View style={s.card}>
+          {!objectifDefined ? (
+            <View style={s.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.blockTitle}>Objectif du jour  <Ionicons name="golf" size={16} color={COLORS.gold} /></Text>
+                <Text style={s.blockSub}>Aujourd'hui je compte fumer :</Text>
+              </View>
+              <View style={s.inputGroup}>
+                <TextInput
+                  style={s.numInput}
+                  keyboardType="number-pad"
+                  value={objectifInput}
+                  onChangeText={setObjectifInput}
+                  placeholder="0"
+                  placeholderTextColor={COLORS.textMuted}
+                  maxLength={2}
+                  returnKeyType="done"
+                  onSubmitEditing={submitObjectif}
+                />
+                <TouchableOpacity
+                  style={[
+                    s.confirmSmallBtn,
+                    !objectifInput && { opacity: 0.4 },
+                  ]}
+                  onPress={submitObjectif}
+                  disabled={!objectifInput}
+                >
+                  <Ionicons
+                    name="checkmark"
+                    size={18}
+                    color={COLORS.bgPrimary}
+                  />
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={s.row}>
+              <View style={{ flex: 1, gap: 10 }}>
+                <Text style={s.blockTitle}>Objectif du jour  <Ionicons name="golf" size={16} color={COLORS.gold} /></Text>
+                <Text style={[s.remainingCount, { color: remainingColor }]}>
+                  <Text style={[s.dailyText, {color: remainingColor}]}>{dailyCount}</Text> restante{dailyCount !== 1 ? "s" : ""}
+                </Text>
+                {dailyCount === 0 && (
+                  <Text style={s.bravoText}>Objectif atteint !  <Ionicons name="flame" size={16} color={COLORS.gold} /></Text>
+                )}
+              </View>
+              <View style={{ alignItems: "center", gap: 15 }}>
+                <TouchableOpacity
+                  style={[s.glisseeBtn, dailyCount === 0 && { opacity: 0.3 }]}
+                  onPress={decrementDailyCount}
+                  disabled={dailyCount === 0}
+                >
+                  <Ionicons name="hand-left" size={15} color={COLORS.danger} />
+                  <Text style={s.glisseeBtnText}>Ma main{"\n"}a glissé</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    setObjectifDefined(false);
+                    setObjectifInput(String(dailyCount));
+                  }}
+                >
+                  <Text style={s.linkText}>Modifier</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <View style={s.card}>
+          <View style={s.row}>
+            <View style={{ flex: 1, gap: 5 }}>
+              <Text style={s.relapseLabel}>Tu as fait une chute ?</Text>
+              <Text style={s.relapseSub}>
+                Ça arrive. L'important est de continuer à grimper.
+              </Text>
+              {secondsLeft > 0 && (
+                <Text style={s.timerWarning}>
+                  Remet le timer à zéro
+                  {timerWarning ? ` (${timerWarning})` : ""}
+                </Text>
+              )}
+              {relapseCount > 0 && (
+                <View style={s.relapseCountRow}>
+                  <Ionicons name="fitness" size={11} color={COLORS.danger} />
+                  <Text style={s.relapseCountText}>
+                    {relapseCount} chute{relapseCount > 1 ? "s" : ""}{" "}
+                    aujourd'hui
+                  </Text>
+                </View>
+              )}
+            </View>
+            <TouchableOpacity onPress={reportRelapse} style={s.relapseBtn}>
+              <Ionicons name="fitness" size={16} color="#fff" />
+              <Text style={s.relapseBtnText}>Oui</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="flag" size={16} color={COLORS.success} />
-            <Text style={[styles.statValue, { color: COLORS.success }]}>
-              {position}/30
+        </View>
+
+        <View style={[s.card, { alignItems: "center", gap: 6 }]}>
+          <Ionicons
+            name="chatbubble-ellipses"
+            size={20}
+            color={COLORS.textMuted}
+          />
+          <Text style={s.relapseMotivText}>{relapseMotivation}</Text>
+        </View>
+
+        <TouchableOpacity
+          onPress={() => setChuteModal(true)}
+          style={s.chuteBtn}
+        >
+          <Ionicons name="umbrella" size={20} color="#fff" />
+          <View>
+            <Text style={s.chuteBtnTitle}>Chute libre</Text>
+            <Text style={s.chuteBtnSub}>
+              Envie forte ? Appuie ici avant de craquer.
             </Text>
-            <Text style={styles.statLabel}>Niveau</Text>
           </View>
-          <View style={styles.statCard}>
-            <Ionicons name="star" size={16} color={COLORS.gold} />
-            <Text style={[styles.statValue, { color: COLORS.gold }]}>
-              {score}
-            </Text>
-            <Text style={styles.statLabel}>Score</Text>
-          </View>
-          <View style={styles.statCard}>
-            <Ionicons
-              name="checkmark-circle"
-              size={16}
-              color={COLORS.success}
-            />
-            <Text style={[styles.statValue, { color: COLORS.success }]}>
-              {logs.filter((l) => l.count === 0).length}
-            </Text>
-            <Text style={styles.statLabel}>Jours clean</Text>
-          </View>
+        </TouchableOpacity>
+
+        <View style={s.statsRow}>
+          {[
+            {
+              icon: "trending-up",
+              value: `${Math.round((position / 30) * 100)}%`,
+              label: "Progression",
+              color: COLORS.textPrimary,
+            },
+            {
+              icon: "flag",
+              value: `${position}/30`,
+              label: "Niveau",
+              color: COLORS.success,
+            },
+            {
+              icon: "star",
+              value: `${score}`,
+              label: "Score",
+              color: COLORS.gold,
+            },
+            {
+              icon: "checkmark-circle",
+              value: `${logs.filter((l) => l.count === 0).length}`,
+              label: "Jours clean",
+              color: COLORS.success,
+            },
+          ].map((m) => (
+            <View key={m.label} style={s.statCard}>
+              <Ionicons name={m.icon as any} size={15} color={m.color} />
+              <Text style={[s.statValue, { color: m.color }]}>{m.value}</Text>
+              <Text style={s.statLabel}>{m.label}</Text>
+            </View>
+          ))}
         </View>
 
         {!todayLog ? (
           <TouchableOpacity
             onPress={() => setLogModal(true)}
-            style={styles.logBtnWrap}
+            style={s.logBtnWrap}
           >
-            <View style={styles.logBtn}>
+            <View style={s.logBtn}>
               <Ionicons
                 name="add-circle"
                 size={24}
                 color={COLORS.bgSecondary}
               />
-              <Text style={styles.logBtnText}>Logger aujourd'hui</Text>
+              <Text style={s.logBtnText}>Logger aujourd'hui</Text>
             </View>
           </TouchableOpacity>
         ) : (
-          <View style={styles.loggedBox}>
-            <View style={styles.loggedLeft}>
+          <View style={s.loggedBox}>
+            <View
+              style={{ flexDirection: "row", alignItems: "center", gap: 10 }}
+            >
               <Ionicons
                 name="checkmark-circle"
                 size={18}
                 color={COLORS.textSecondary}
               />
-              <Text style={styles.loggedText}>
-                Loggé : {todayLog.count} {user?.addiction?.unit}
+              <Text style={s.loggedText}>
+                Loggé : {todayLog.count} cigarette(s)
               </Text>
             </View>
             <TouchableOpacity
@@ -295,51 +408,51 @@ export default function HomeScreen() {
                 setLogModal(true);
               }}
             >
-              <Text style={styles.editLog}>Modifier</Text>
+              <Text style={s.editLog}>Modifier</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        <DayTracker logs={logs} currentDay={dayNumber} />
+        <DayTracker
+          logs={logs}
+          currentDay={dayNumber}
+          relapseCount={relapseCount}
+        />
       </ScrollView>
 
       <Modal visible={logModal} transparent animationType="slide">
         <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-          <View style={styles.modalOverlay}>
+          <View style={s.modalOverlay}>
             <KeyboardAvoidingView
               behavior={Platform.OS === "ios" ? "padding" : "height"}
               style={{ width: "100%" }}
             >
               <TouchableWithoutFeedback>
-                <View style={styles.modal}>
+                <View style={s.modal}>
                   <TouchableOpacity
                     onPress={() => {
                       setLogModal(false);
                       setCount("");
                     }}
-                    style={styles.closeBtn}
+                    style={s.closeBtn}
                   >
                     <Ionicons name="close" size={22} color={COLORS.textMuted} />
                   </TouchableOpacity>
-                  <Text style={styles.modalTitle}>Combien aujourd'hui ?</Text>
-                  <Text style={styles.modalSub}>
-                    {user?.addiction?.label} - Sois honnête avec toi-même
+                  <Text style={s.modalTitle}>Combien aujourd'hui ?</Text>
+                  <Text style={s.modalSub}>
+                    Cigarettes — Sois honnête avec toi-même
                   </Text>
-
-                  <View style={styles.quickRow}>
+                  <View style={s.quickRow}>
                     {["0", "1", "2", "5", "10"].map((n) => (
                       <TouchableOpacity
                         key={n}
-                        style={[
-                          styles.quickBtn,
-                          count === n && styles.quickBtnActive,
-                        ]}
+                        style={[s.quickBtn, count === n && s.quickBtnActive]}
                         onPress={() => setCount(n)}
                       >
                         <Text
                           style={[
-                            styles.quickText,
-                            count === n && styles.quickTextActive,
+                            s.quickText,
+                            count === n && s.quickTextActive,
                           ]}
                         >
                           {n}
@@ -347,9 +460,8 @@ export default function HomeScreen() {
                       </TouchableOpacity>
                     ))}
                   </View>
-
                   <TextInput
-                    style={styles.modalInput}
+                    style={s.modalInput}
                     keyboardType="number-pad"
                     value={count}
                     onChangeText={setCount}
@@ -357,49 +469,34 @@ export default function HomeScreen() {
                     placeholderTextColor="#555"
                     maxLength={3}
                   />
-                  <Text style={styles.unitLabel}>{user?.addiction?.unit}</Text>
-
+                  <Text style={s.unitLabel}>cigarette(s)</Text>
                   {count !== "" && (
                     <View
-                      style={[
-                        styles.deltaBox,
-                        { borderColor: deltaInfo.color },
-                      ]}
+                      style={[s.deltaBox, { borderColor: deltaInfo.color }]}
                     >
-                      <View
-                        style={{
-                          flexDirection: "row",
-                          alignItems: "center",
-                          gap: 8,
-                        }}
-                      >
-                        <Ionicons
-                          name={deltaInfo.icon}
-                          size={24}
-                          color={deltaInfo.color}
-                        />
-                        <Text
-                          style={[styles.deltaText, { color: deltaInfo.color }]}
-                        >
-                          {deltaInfo.text}
-                        </Text>
-                      </View>
+                      <Ionicons
+                        name={deltaInfo.icon}
+                        size={24}
+                        color={deltaInfo.color}
+                      />
+                      <Text style={[s.deltaText, { color: deltaInfo.color }]}>
+                        {deltaInfo.text}
+                      </Text>
                     </View>
                   )}
-
-                  <View style={styles.modalBtns}>
+                  <View style={s.modalBtns}>
                     <TouchableOpacity
                       onPress={() => {
                         setLogModal(false);
                         setCount("");
                       }}
-                      style={styles.cancelBtn}
+                      style={s.cancelBtn}
                     >
-                      <Text style={styles.cancelText}>Annuler</Text>
+                      <Text style={s.cancelText}>Annuler</Text>
                     </TouchableOpacity>
                     <TouchableOpacity onPress={submitLog} style={{ flex: 1 }}>
-                      <View style={styles.confirmBtn}>
-                        <Text style={styles.confirmText}>Valider</Text>
+                      <View style={s.confirmBtn}>
+                        <Text style={s.confirmText}>Valider</Text>
                       </View>
                     </TouchableOpacity>
                   </View>
@@ -412,56 +509,58 @@ export default function HomeScreen() {
 
       {newTrophy && (
         <Modal visible transparent animationType="fade">
-          <View style={styles.trophyOverlay}>
-            <View style={styles.trophyModal}>
+          <View style={s.trophyOverlay}>
+            <View style={s.trophyModal}>
               <Ionicons
                 name="trophy"
                 size={72}
                 color={COLORS.gold}
                 style={{ marginBottom: 16 }}
               />
-              <Text style={styles.trophyLabel}>Trophée débloqué !</Text>
-              <Text style={styles.trophyName}>{newTrophy.title}</Text>
-              <Text style={styles.trophyDesc}>{newTrophy.desc}</Text>
+              <Text style={s.trophyLabel}>Trophée débloqué !</Text>
+              <Text style={s.trophyName}>{newTrophy.title}</Text>
+              <Text style={s.trophyDesc}>{newTrophy.desc}</Text>
               <TouchableOpacity
                 onPress={clearNewTrophy}
                 style={{ width: "100%" }}
               >
-                <View style={styles.confirmBtn}>
-                  <Text style={styles.confirmText}>Super !</Text>
+                <View style={s.confirmBtn}>
+                  <Text style={s.confirmText}>Super !</Text>
                 </View>
               </TouchableOpacity>
             </View>
           </View>
         </Modal>
       )}
+
+      <ChuteLiBreModal
+        visible={chuteModal}
+        onClose={() => setChuteModal(false)}
+        avatar={user?.avatar?.image}
+      />
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   bg: { flex: 1 },
-  container: { paddingHorizontal: SPACING.xl },
+  container: { paddingHorizontal: SPACING.xl, gap: SPACING.sm },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: SPACING.md,
   },
-  userRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
+  userRow: { flexDirection: "row", alignItems: "center", gap: 8 },
   greeting: {
     fontSize: FONT_SIZE.xl,
     fontWeight: "900",
     color: COLORS.textPrimary,
   },
-  subGreeting: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.md,
-    marginTop: 2,
+  subGreeting: { color: COLORS.textSecondary, fontSize: FONT_SIZE.md },
+  profileRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
   },
   streakPill: {
     backgroundColor: COLORS.dangerDim,
@@ -480,16 +579,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.goldDim,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
-    marginBottom: SPACING.md,
     borderColor: COLORS.goldBorder,
     alignItems: "center",
-  },
-  motivationBox2: {
-    padding: SPACING.md,
-    gap: 5,
-    marginBottom: SPACING.md,
-    borderColor: COLORS.goldBorder,
-    alignItems: "center",
+    gap: 4,
   },
   motivationText: {
     color: COLORS.gold,
@@ -498,100 +590,163 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 20,
   },
-  motivationText2: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.md,
-    fontWeight: "600",
-    textAlign: "center",
-    lineHeight: 20,
-  },
-  combinedBox: {
+  card: {
     backgroundColor: COLORS.bgCard,
-    borderRadius: RADIUS.md,
-    marginBottom: SPACING.md,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
     borderWidth: 1,
     borderColor: COLORS.bgCardBorder,
-    overflow: "hidden",
   },
+  row: { flexDirection: "row", alignItems: "center", gap: SPACING.sm },
   timerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
   },
   timerLeft: {
     flexDirection: "row",
     alignItems: "center",
     gap: SPACING.sm,
-  },
-  combinedSeparator: {
-    height: 1,
-    backgroundColor: COLORS.bgCardBorder,
-  },
-  relapseRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.lg,
+    flex: 1,
   },
   timerLabel: {
     color: COLORS.gold,
     fontWeight: FONT_WEIGHT.black,
     fontSize: FONT_SIZE.md,
   },
-  timerScorePill: {
+  scorePill: {
     flexDirection: "row",
     alignItems: "center",
     gap: 4,
-    backgroundColor: COLORS.bgCard,
+    backgroundColor: COLORS.bgSecondary,
     borderRadius: RADIUS.full,
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
     borderWidth: 1,
     borderColor: COLORS.goldBorder,
   },
-  timerScore: {
+  scoreText: {
     color: COLORS.gold,
     fontWeight: FONT_WEIGHT.black,
     fontSize: FONT_SIZE.sm,
   },
-  relapseText: {
-    color: COLORS.danger,
-    fontSize: FONT_SIZE.md,
-    fontWeight: FONT_WEIGHT.bold,
+  blockTitle: {
+    color: COLORS.textPrimary,
+    fontWeight: FONT_WEIGHT.black,
+    fontSize: FONT_SIZE.base,
   },
-  relapseBtn: {
+  blockSub: {
+    color: COLORS.textSecondary,
+    fontSize: FONT_SIZE.md,
+    marginTop: 2,
+  },
+  inputGroup: { flexDirection: "row", alignItems: "center", gap: SPACING.xs },
+  numInput: {
+    backgroundColor: COLORS.bgSecondary,
+    borderRadius: RADIUS.sm,
+    borderWidth: 1.5,
+    borderColor: COLORS.bgCardBorder,
+    color: COLORS.gold,
+    fontWeight: FONT_WEIGHT.black,
+    fontSize: FONT_SIZE.xl,
+    textAlign: "center",
+    width: 52,
+    paddingVertical: SPACING.xs,
+  },
+  confirmSmallBtn: {
+    backgroundColor: COLORS.gold,
+    borderRadius: RADIUS.sm,
+    padding: SPACING.sm,
+  },
+  remainingCount: {
+    fontSize: FONT_SIZE["lg"],
+    fontWeight: FONT_WEIGHT.semibold,
+    marginTop: 2,
+  },
+  dailyText: {
+    fontSize: FONT_SIZE["4xl"],
+    fontWeight: FONT_WEIGHT.black,
+  },
+  bravoText: {
+    color: COLORS.success,
+    fontSize: FONT_SIZE.sm,
+    fontWeight: FONT_WEIGHT.bold,
+    marginTop: 2,
+  },
+  glisseeBtn: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
-    backgroundColor: "rgba(156,53,40,0.15)",
-    borderRadius: RADIUS.sm,
-    paddingHorizontal: SPACING.sm + 2,
-    paddingVertical: SPACING.xs + 2,
+    gap: 5,
+    backgroundColor: "rgba(156,53,40,0.10)",
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.sm,
+    paddingVertical: SPACING.sm,
   },
-  relapseBtnText: {
+  glisseeBtnText: {
     color: COLORS.danger,
     fontWeight: FONT_WEIGHT.black,
-    fontSize: FONT_SIZE.md,
+    fontSize: FONT_SIZE.xs,
+    lineHeight: 15,
   },
-  relapseCountPill: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 3,
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.full,
-    borderWidth: 1,
-    borderColor: "rgba(156,53,40,0.3)",
+  linkText: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs,
+    textDecorationLine: "underline",
+    textAlign: "center",
   },
+  relapseLabel: {
+    color: COLORS.danger,
+    fontWeight: FONT_WEIGHT.black,
+    fontSize: FONT_SIZE.base,
+  },
+  relapseSub: { color: COLORS.textSecondary, fontSize: FONT_SIZE.sm },
+  timerWarning: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs,
+    fontStyle: "italic",
+  },
+  relapseCountRow: { flexDirection: "row", alignItems: "center", gap: 4 },
   relapseCountText: {
     color: COLORS.danger,
     fontSize: FONT_SIZE.xs,
-    fontWeight: FONT_WEIGHT.black,
+    fontWeight: FONT_WEIGHT.bold,
   },
-  statsRow: { flexDirection: "row", gap: SPACING.sm, marginBottom: SPACING.md },
+  relapseBtn: {
+    backgroundColor: COLORS.danger,
+    borderRadius: RADIUS.md,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  relapseBtnText: {
+    color: "#fff",
+    fontWeight: FONT_WEIGHT.black,
+    fontSize: FONT_SIZE.base,
+  },
+  relapseMotivText: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.md,
+    fontWeight: "600",
+    textAlign: "center",
+    lineHeight: 20,
+  },
+  chuteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+    backgroundColor: COLORS.danger,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+  },
+  chuteBtnTitle: {
+    color: "#fff",
+    fontWeight: FONT_WEIGHT.black,
+    fontSize: FONT_SIZE.base,
+  },
+  chuteBtnSub: { color: "rgba(255,255,255,0.75)", fontSize: FONT_SIZE.sm },
+  statsRow: { flexDirection: "row", gap: SPACING.sm },
   statCard: {
     flex: 1,
     backgroundColor: COLORS.bgCard,
@@ -610,10 +765,9 @@ const styles = StyleSheet.create({
   statLabel: {
     color: COLORS.textMuted,
     fontSize: FONT_SIZE.xs,
-    marginTop: 1,
     textAlign: "center",
   },
-  logBtnWrap: { marginBottom: SPACING.md },
+  logBtnWrap: {},
   logBtn: {
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
@@ -635,9 +789,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.bgSecondary,
     borderRadius: RADIUS.md,
     padding: SPACING.md,
-    marginBottom: SPACING.md,
   },
-  loggedLeft: { flexDirection: "row", alignItems: "center", gap: 10 },
   loggedText: {
     color: COLORS.textSecondary,
     fontWeight: "700",
@@ -709,7 +861,10 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     padding: SPACING.sm,
     marginBottom: SPACING.md,
+    flexDirection: "row",
     alignItems: "center",
+    gap: 8,
+    justifyContent: "center",
   },
   deltaText: { fontWeight: "800", fontSize: FONT_SIZE.lg },
   modalBtns: { flexDirection: "row", gap: SPACING.md },

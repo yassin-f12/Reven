@@ -8,17 +8,17 @@ import {
   RADIUS,
   SPACING,
 } from "@/src/utils/theme";
-import { Addiction, Avatar } from "@/types";
+import { Avatar } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
 import React, { useState } from "react";
 import {
   Dimensions,
+  Image,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
   StyleSheet,
   Text,
-  Image,
   TextInput,
   TouchableOpacity,
   View,
@@ -26,32 +26,29 @@ import {
 
 const { width } = Dimensions.get("window");
 
+const CIGARETTE = ADDICTIONS[0];
+
 export default function OnboardingScreen() {
   const [step, setStep] = useState(0);
   const [pseudo, setPseudo] = useState("");
   const [avatar, setAvatar] = useState<Avatar | null>(null);
-  const [addiction, setAddiction] = useState<Addiction | null>(null);
   const setUser = useStore((s) => s.setUser);
 
   const canNext = (): boolean => {
     if (step === 0) return pseudo.trim().length >= 2;
     if (step === 1) return avatar !== null;
-    if (step === 2) return addiction !== null;
     return false;
   };
 
   const next = () => {
-    if (step < 2) setStep(step + 1);
-    else if (avatar && addiction) {
-      setUser({ pseudo: pseudo.trim(), avatar, addiction });
+    if (step < 1) {
+      setStep(step + 1);
+    } else if (avatar) {
+      setUser({ pseudo: pseudo.trim(), avatar, addiction: CIGARETTE });
     }
   };
 
-  const stepIcons: {
-    icon: IoniconsName;
-    title: string;
-    sub: string;
-  }[] = [
+  const stepConfig: { icon: IoniconsName; title: string; sub: string }[] = [
     {
       icon: "game-controller-outline",
       title: "Comment tu t'appelles ?",
@@ -61,11 +58,6 @@ export default function OnboardingScreen() {
       icon: "person",
       title: "Choisis ton avatar",
       sub: "Qui va grimper ce mur ?",
-    },
-    {
-      icon: "flag",
-      title: "Que veux-tu arrêter ?",
-      sub: "Sois honnête, c'est pour toi",
     },
   ];
 
@@ -80,14 +72,12 @@ export default function OnboardingScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <View style={styles.logoRow}>
-              <Text style={styles.logo}>Reven</Text>
-            </View>
+            <Text style={styles.logo}>Reven</Text>
             <Text style={styles.tagline}>Grimpe vers ta meilleure version</Text>
           </View>
 
           <View style={styles.steps}>
-            {[0, 1, 2].map((i) => (
+            {[0, 1].map((i) => (
               <View
                 key={i}
                 style={[styles.dot, i <= step && styles.dotActive]}
@@ -97,19 +87,19 @@ export default function OnboardingScreen() {
 
           <View style={styles.card}>
             <Ionicons
-              name={stepIcons[step].icon}
+              name={stepConfig[step].icon}
               size={40}
               color={COLORS.gold}
               style={styles.stepIcon}
             />
-            <Text style={styles.stepTitle}>{stepIcons[step].title}</Text>
-            <Text style={styles.stepSub}>{stepIcons[step].sub}</Text>
+            <Text style={styles.stepTitle}>{stepConfig[step].title}</Text>
+            <Text style={styles.stepSub}>{stepConfig[step].sub}</Text>
 
             {step === 0 && (
               <>
                 <TextInput
                   style={styles.input}
-                  placeholder="Ex: Angèle"
+                  placeholder="Ex : Angèle"
                   placeholderTextColor="#888"
                   value={pseudo}
                   onChangeText={setPseudo}
@@ -137,46 +127,6 @@ export default function OnboardingScreen() {
                 ))}
               </View>
             )}
-
-            {step === 2 && (
-              <View style={styles.addictionList}>
-                {ADDICTIONS.map((a) => (
-                  <TouchableOpacity
-                    key={a.id}
-                    style={[
-                      styles.addictionBtn,
-                      addiction?.id === a.id && styles.addictionBtnActive,
-                    ]}
-                    onPress={() => setAddiction(a)}
-                  >
-                    <Ionicons
-                      name={a.iconName as any}
-                      size={24}
-                      color={
-                        addiction?.id === a.id
-                          ? COLORS.gold
-                          : COLORS.textSecondary
-                      }
-                    />
-                    <Text
-                      style={[
-                        styles.addictionLabel,
-                        addiction?.id === a.id && styles.addictionLabelActive,
-                      ]}
-                    >
-                      {a.label}
-                    </Text>
-                    {addiction?.id === a.id && (
-                      <Ionicons
-                        name="checkmark-circle"
-                        size={20}
-                        color={COLORS.gold}
-                      />
-                    )}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            )}
           </View>
 
           <TouchableOpacity
@@ -184,12 +134,12 @@ export default function OnboardingScreen() {
             onPress={next}
             disabled={!canNext()}
           >
-            <View style={styles.btnGrad}>
+            <View style={styles.btnInner}>
               <Text style={styles.btnText}>
-                {step < 2 ? "Continuer" : "Commencer l'aventure !"}
+                {step < 1 ? "Continuer" : "Commencer l'aventure !"}
               </Text>
               <Ionicons
-                name={step < 2 ? "arrow-forward" : "checkmark-outline"}
+                name={step < 1 ? "arrow-forward" : "checkmark-outline"}
                 size={25}
                 color={COLORS.bgSecondary}
               />
@@ -209,7 +159,6 @@ const styles = StyleSheet.create({
     paddingBottom: SPACING["4xl"],
   },
   header: { alignItems: "center", marginBottom: SPACING["3xl"] },
-  logoRow: { flexDirection: "row", alignItems: "center" },
   logo: {
     fontSize: FONT_SIZE["4xl"],
     fontWeight: FONT_WEIGHT.black,
@@ -297,35 +246,10 @@ const styles = StyleSheet.create({
     borderColor: COLORS.gold,
     backgroundColor: COLORS.goldDim,
   },
-  avatarLabel: {
-    color: COLORS.textSecondary,
-    fontSize: FONT_SIZE.xs,
-  },
-  addictionList: { gap: SPACING.sm + 2, width: "100%" },
-  addictionBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.07)",
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md + 2,
-    borderWidth: 2,
-    borderColor: "transparent",
-    gap: SPACING.md,
-  },
-  addictionBtnActive: {
-    borderColor: COLORS.gold,
-    backgroundColor: COLORS.goldDim,
-  },
-  addictionLabel: {
-    fontSize: FONT_SIZE.base,
-    color: COLORS.textSecondary,
-    fontWeight: FONT_WEIGHT.semibold,
-    flex: 1,
-  },
-  addictionLabelActive: { color: COLORS.gold },
+  avatarLabel: { color: COLORS.textSecondary, fontSize: FONT_SIZE.xs },
   btn: { marginTop: SPACING.sm },
   btnDisabled: { opacity: 0.4 },
-  btnGrad: {
+  btnInner: {
     borderRadius: RADIUS.lg,
     padding: SPACING.lg,
     alignItems: "center",
