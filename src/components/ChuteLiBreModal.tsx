@@ -4,6 +4,7 @@ import {
   Easing,
   Image,
   Modal,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -17,31 +18,31 @@ import {
   RADIUS,
   SPACING,
 } from "@/src/utils/theme";
+import EvasionGame from "./Evasiongame";
 
 const BREATHING_STEPS = [
   "Inspire lentement par le nez... (4 secondes)",
   "Bloque ta respiration... (4 secondes)",
   "Expire doucement par la bouche... (6 secondes)",
-  "Recommence. Tu tiens le coup.",
+  "Recommence. Tu tiens le coup",
 ];
 
 const CRAVING_TIPS = [
-  "Le craving dure en moyenne 3 à 5 minutes. Tu peux tenir.",
-  "Une envie n'est pas un ordre.",
-  "Bois un grand verre d'eau maintenant.",
-  "Lève-toi et marche 2 minutes.",
-  "Change de pièce maintenant.",
-  "Appelle quelqu'un que tu aimes.",
-  "Mets de l'eau froide sur ton visage.",
-  "Serre les poings 10 secondes, puis relâche.",
-  "Regarde une photo qui te rend heureux(se).",
-  "Le manque est une vague - laisse-la passer.",
-  "Ça va redescendre, même si c'est fort maintenant.",
-  "Tu as déjà résisté avant. Tu peux le faire encore.",
-  "Chaque minute de résistance compte.",
-  "Compte lentement jusqu'à 60.",
+  "Le craving dure en moyenne 3 à 5 minutes. Tu peux tenir",
+  "Une envie n'est pas un ordre",
+  "Bois un grand verre d'eau maintenant",
+  "Lève-toi et marche 2 minutes",
+  "Change de pièce maintenant",
+  "Appelle quelqu'un que tu aimes",
+  "Mets de l'eau froide sur ton visage",
+  "Serre les poings 10 secondes, puis relâche",
+  "Regarde une photo qui te rend heureux(se)",
+  "Le manque est une vague - laisse-la passer",
+  "Ça va redescendre, même si c'est fort maintenant",
+  "Tu as déjà résisté avant. Tu peux le faire encore",
+  "Chaque minute de résistance compte",
+  "Compte lentement jusqu'à 60",
 ];
-
 interface Props {
   visible: boolean;
   onClose: () => void;
@@ -58,7 +59,7 @@ export default function ChuteLiBreModal({ visible, onClose, avatar }: Props) {
 
   useEffect(() => {
     if (!visible) return;
-    const interval = setInterval(() => {
+    const i = setInterval(() => {
       Animated.sequence([
         Animated.timing(fadeAnim, {
           toValue: 0,
@@ -73,7 +74,7 @@ export default function ChuteLiBreModal({ visible, onClose, avatar }: Props) {
       ]).start();
       setTimeout(() => setTipIndex((n) => (n + 1) % CRAVING_TIPS.length), 300);
     }, 4000);
-    return () => clearInterval(interval);
+    return () => clearInterval(i);
   }, [visible]);
 
   useEffect(() => {
@@ -100,136 +101,144 @@ export default function ChuteLiBreModal({ visible, onClose, avatar }: Props) {
 
   useEffect(() => {
     if (!visible) return;
-    const interval = setInterval(
+    const i = setInterval(
       () => setBreathIndex((n) => (n + 1) % BREATHING_STEPS.length),
       4000,
     );
-    return () => clearInterval(interval);
+    return () => clearInterval(i);
   }, [visible]);
 
   useEffect(() => {
     if (!visible) return;
-
     setProgress(100);
-
-    const duration = 180000;
-    const intervalTime = 1000;
-
-    const step = 100 / (duration / intervalTime);
-
-    const interval = setInterval(() => {
-      setProgress((p) => {
-        const next = p - step;
-        return next <= 0 ? 0 : next;
-      });
-    }, intervalTime);
-
-    return () => clearInterval(interval);
+    const step = 100 / 180;
+    const i = setInterval(
+      () => setProgress((p) => Math.max(0, p - step)),
+      1000,
+    );
+    return () => clearInterval(i);
   }, [visible]);
+
+  const progressColor =
+    progress > 60
+      ? COLORS.danger
+      : progress > 30
+        ? COLORS.orange
+        : COLORS.success;
+
+  const progressMsg =
+    progress > 60
+      ? "Respire. Ça monte, mais ça va redescendre..."
+      : progress > 30
+        ? "Ça commence à passer..."
+        : "Tu es presque sorti de la vague";
 
   return (
     <Modal visible={visible} transparent animationType="fade">
-      <View style={styles.overlay}>
-        <View style={styles.card}>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Ionicons name="close" size={22} color={COLORS.textMuted} />
-          </TouchableOpacity>
-
-          <Text style={styles.title}>
-            Mode résistance{" "}
-            <Ionicons name="shield" size={20} color={COLORS.textPrimary} />
-          </Text>
-          <Text style={styles.sub}>
-            Tu ressens l'envie de fumer ?{"\n"}Reste là. Je suis avec toi
-          </Text>
-
-          <View style={styles.progressContainer}>
-            <View
-              style={[
-                styles.progressBar,
-                {
-                  width: `${progress}%`,
-                  backgroundColor:
-                    progress > 60
-                      ? COLORS.danger
-                      : progress > 30
-                        ? COLORS.orange
-                        : COLORS.success,
-                },
-              ]}
-            />
-          </View>
-
-          <Text style={styles.encouragement}>
-            {progress > 60
-              ? "Respire. Ça monte, mais ça va redescendre..."
-              : progress > 30
-                ? "Ça commence à passer"
-                : "Tu es presque sorti de la vague"}
-          </Text>
-
-          <Animated.View
-            style={[styles.avatarWrap, { transform: [{ scale: scaleAnim }] }]}
+      <View style={m.overlay}>
+        <View style={m.sheet}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            contentContainerStyle={m.scrollContent}
+            keyboardShouldPersistTaps="handled"
           >
-            <Image source={avatar} style={styles.avatar} />
-          </Animated.View>
+            <View style={m.topRow}>
+              <Text style={m.title}>
+                Mode résistance{" "}
+                <Ionicons name="shield" size={20} color={COLORS.textPrimary} />
+              </Text>
+              <TouchableOpacity onPress={onClose}>
+                <Ionicons name="close" size={22} color={COLORS.textMuted} />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.breathBox}>
-            <Ionicons
-              name="chatbubble-ellipses"
-              size={18}
-              color={COLORS.info}
-            />
-            <Text style={styles.breathStep}>
-              {BREATHING_STEPS[breathIndex]}
+            <Text style={m.sub}>
+              Tu ressens l'envie de fumer ?{"\n"}Reste là. Je suis avec toi.
             </Text>
-          </View>
 
-          <Animated.View style={[styles.tipBox, { opacity: fadeAnim }]}>
-            <Ionicons name="bulb" size={16} color={COLORS.gold} />
-            <Text style={styles.tip}>{CRAVING_TIPS[tipIndex]}</Text>
-          </Animated.View>
+            <View style={m.progressContainer}>
+              <View
+                style={[
+                  m.progressBar,
+                  { width: `${progress}%`, backgroundColor: progressColor },
+                ]}
+              />
+            </View>
+            <Text style={m.encouragement}>{progressMsg}</Text>
 
-          <Text style={styles.encouragement}>
-            Le craving passe. Toi, tu restes.
-          </Text>
+            <Animated.View
+              style={[m.avatarWrap, { transform: [{ scale: scaleAnim }] }]}
+            >
+              <Image source={avatar} style={m.avatar} />
+            </Animated.View>
 
-          <TouchableOpacity onPress={onClose} style={styles.doneBtn}>
-            <Text style={styles.doneBtnText}>
-              J'ai tenu{" "}
-              <Ionicons name="fitness" size={20} color={COLORS.bgPrimary} />
+            <View style={m.breathBox}>
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={18}
+                color={COLORS.info}
+              />
+              <Text style={m.breathStep}>{BREATHING_STEPS[breathIndex]}</Text>
+            </View>
+
+            <Animated.View style={[m.tipBox, { opacity: fadeAnim }]}>
+              <Ionicons name="bulb" size={16} color={COLORS.gold} />
+              <Text style={m.tip}>{CRAVING_TIPS[tipIndex]}</Text>
+            </Animated.View>
+
+            <Text style={m.encouragement}>
+              Le craving passe. Toi, tu restes.
             </Text>
-          </TouchableOpacity>
+
+            <View style={m.gameSep}>
+              <View style={m.gameSepLine} />
+              <Text style={m.gameSepText}>occupe-toi les mains</Text>
+              <View style={m.gameSepLine} />
+            </View>
+
+            <EvasionGame />
+
+            <TouchableOpacity onPress={onClose} style={m.doneBtn}>
+              <View style={m.doneBtnInner}>
+                <Text style={m.doneBtnText}>J'ai tenu</Text>
+                <Ionicons name="fitness" size={20} color={COLORS.bgPrimary} />
+              </View>
+            </TouchableOpacity>
+          </ScrollView>
         </View>
       </View>
     </Modal>
   );
 }
 
-const styles = StyleSheet.create({
+const m = StyleSheet.create({
   overlay: {
     flex: 1,
     backgroundColor: "rgba(0,0,0,0.82)",
-    justifyContent: "center",
-    alignItems: "center",
-    padding: SPACING["2xl"],
+    justifyContent: "flex-end",
   },
-  card: {
+  sheet: {
     backgroundColor: COLORS.bgSecondary,
-    borderRadius: RADIUS["2xl"],
-    padding: SPACING["2xl"],
-    width: "100%",
-    alignItems: "center",
-    gap: SPACING.md,
+    borderTopLeftRadius: RADIUS["2xl"],
+    borderTopRightRadius: RADIUS["2xl"],
+    maxHeight: "92%",
     borderWidth: 1,
     borderColor: COLORS.bgCardBorder,
   },
-  closeBtn: { alignSelf: "flex-end" },
+  scrollContent: {
+    padding: SPACING["2xl"],
+    gap: SPACING.md,
+    paddingBottom: SPACING["4xl"],
+  },
+  topRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   title: {
     fontSize: FONT_SIZE["2xl"],
     fontWeight: FONT_WEIGHT.black,
     color: COLORS.textPrimary,
-    textAlign: "center",
   },
   sub: {
     color: COLORS.textSecondary,
@@ -243,12 +252,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.goldDim,
     borderRadius: 10,
     overflow: "hidden",
-    marginTop: SPACING.sm,
   },
-  progressBar: {
-    height: "100%",
-    borderRadius: 10,
-  },
+  progressBar: { height: "100%", borderRadius: 10 },
   avatarWrap: {
     width: 80,
     height: 80,
@@ -258,15 +263,13 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: COLORS.goldDim,
-    marginVertical: SPACING.sm,
+    alignSelf: "center",
   },
   avatar: { width: 54, height: 54 },
   breathBox: {
     flexDirection: "row",
     alignItems: "center",
     gap: SPACING.sm,
-    backgroundColor: "rgba(58,107,122,0.15)",
-    borderRadius: RADIUS.md,
     padding: SPACING.md,
     width: "100%",
   },
@@ -279,10 +282,8 @@ const styles = StyleSheet.create({
   },
   tipBox: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: SPACING.sm,
-    backgroundColor: COLORS.goldDim,
-    borderRadius: RADIUS.md,
     padding: SPACING.md,
     width: "100%",
   },
@@ -299,14 +300,30 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     textAlign: "center",
   },
+  gameSep: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
+    marginVertical: SPACING.sm,
+  },
+  gameSepLine: { flex: 1, height: 1, backgroundColor: COLORS.bgCardBorder },
+  gameSepText: {
+    color: COLORS.textMuted,
+    fontSize: FONT_SIZE.xs,
+    fontStyle: "italic",
+  },
   doneBtn: {
     backgroundColor: COLORS.gold,
     borderRadius: RADIUS.lg,
     paddingHorizontal: SPACING["2xl"],
     paddingVertical: SPACING.md,
-    marginTop: SPACING.sm,
-    width: "100%",
     alignItems: "center",
+    marginTop: SPACING.sm,
+  },
+  doneBtnInner: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.sm,
   },
   doneBtnText: {
     color: COLORS.bgPrimary,

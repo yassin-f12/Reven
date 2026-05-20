@@ -1,19 +1,20 @@
 import { COLORS } from "@/src/utils/theme";
 import { Avatar } from "@/types";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Animated,
   Dimensions,
   Easing,
-  Image,
   ImageBackground,
   StyleSheet,
   Text,
-  TouchableOpacity,
   View,
 } from "react-native";
 import useStore from "@/src/store/useStore";
+import LevelMarker from "./Levelmarker";
+import ClimberAvatar from "./Climberavatar";
+import VictoryCard from "./Victorycard";
 
 const { width: SCREEN_W } = Dimensions.get("window");
 const TOTAL_STEPS = 30;
@@ -37,159 +38,6 @@ function getWallImage(position: number): any {
   if (position >= 5) return WALL_IMAGES[5];
   return WALL_IMAGES[0];
 }
-interface LevelMarkerProps {
-  lvl: number;
-  position: number;
-  wallH: number;
-  alreadySeen: boolean;
-  onAnimationPlayed: (lvl: number) => void;
-}
-
-function LevelMarker({
-  lvl,
-  position,
-  wallH,
-  alreadySeen,
-  onAnimationPlayed,
-}: LevelMarkerProps) {
-  const reached = position >= lvl;
-  const prevReached = useRef(alreadySeen);
-
-  const scaleAnim = useRef(
-    new Animated.Value(alreadySeen && reached ? 1.4 : 1),
-  ).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const rotateAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (reached && !prevReached.current && !alreadySeen) {
-      Animated.sequence([
-        Animated.spring(scaleAnim, {
-          toValue: 2.2,
-          tension: 80,
-          friction: 4,
-          useNativeDriver: true,
-        }),
-        Animated.spring(scaleAnim, {
-          toValue: 1.4,
-          tension: 60,
-          friction: 6,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      Animated.sequence([
-        Animated.timing(rotateAnim, {
-          toValue: 1,
-          duration: 300,
-          easing: Easing.out(Easing.back(3)),
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0.5,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-        Animated.timing(rotateAnim, {
-          toValue: 0,
-          duration: 150,
-          useNativeDriver: true,
-        }),
-      ]).start();
-
-      const glow = Animated.loop(
-        Animated.sequence([
-          Animated.timing(glowAnim, {
-            toValue: 1,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowAnim, {
-            toValue: 0,
-            duration: 400,
-            useNativeDriver: true,
-          }),
-        ]),
-        { iterations: 4 },
-      );
-      glow.start();
-
-      onAnimationPlayed(lvl);
-    }
-
-    if (reached) {
-      prevReached.current = true;
-    } else {
-      prevReached.current = false;
-      scaleAnim.setValue(1);
-      glowAnim.setValue(0);
-    }
-  }, [reached]);
-
-  const pct = lvl / TOTAL_STEPS;
-  const usableH = wallH - 16;
-  const topPos = 8 + (1 - pct) * usableH;
-
-  const rotate = rotateAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ["0deg", "30deg"],
-  });
-  const glowOpacity = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 0.9],
-  });
-
-  return (
-    <View style={[markerStyles.wrap, { top: topPos - 7 }]}>
-      {reached && (
-        <Animated.View style={[markerStyles.glow, { opacity: glowOpacity }]} />
-      )}
-      <Animated.View
-        style={[
-          markerStyles.inner,
-          { transform: [{ scale: scaleAnim }, { rotate }] },
-        ]}
-      >
-        <Ionicons
-          name="flag"
-          size={10}
-          color={reached ? COLORS.gold : "rgba(255,255,255,1)"}
-        />
-      </Animated.View>
-      <Text style={[markerStyles.label, reached && markerStyles.labelReached]}>
-        {lvl}
-      </Text>
-    </View>
-  );
-}
-
-const markerStyles = StyleSheet.create({
-  wrap: {
-    position: "absolute",
-    left: 14,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-    zIndex: 11,
-  },
-  inner: { alignItems: "center", justifyContent: "center" },
-  glow: {
-    position: "absolute",
-    left: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: COLORS.gold,
-  },
-  label: { color: "rgba(255,255,255,1)", fontSize: 7, fontWeight: "900" },
-  labelReached: { color: COLORS.gold },
-});
-
 interface Props {
   position: number;
   avatar: Avatar | null;
@@ -208,6 +56,8 @@ export default function ClimberWall({
   const animationsSeenForLevels = useStore((s) => s.animationsSeenForLevels);
   const markLevelAnimationSeen = useStore((s) => s.markLevelAnimationSeen);
 
+  const [victoryDismissed, setVictoryDismissed] = useState(false);
+
   const WALL_W = fullWidth ? SCREEN_W - 40 : 160;
   const WALL_H = fullWidth ? 400 : 500;
 
@@ -219,10 +69,7 @@ export default function ClimberWall({
   const progress = Math.min(position / TOTAL_STEPS, 1);
   const nearSummit = progress >= SUMMIT_ZONE;
   const atSummit = position >= TOTAL_STEPS;
-
-  const TOP_Y = WALL_H * 0.08;
-  const BOTTOM_Y = WALL_H * 0.78;
-  const climberY = BOTTOM_Y - progress * (BOTTOM_Y - TOP_Y);
+  const climberY = WALL_H * 0.78 - progress * (WALL_H * 0.78 - WALL_H * 0.08);
 
   useEffect(() => {
     Animated.sequence([
@@ -311,116 +158,65 @@ export default function ClimberWall({
     outputRange: [0, 0.6],
   });
 
-  const wallImage = getWallImage(position);
-
   return (
-    <View style={[styles.container, { marginBottom: 12 }]}>
+    <View style={[s.container, { marginBottom: 12 }]}>
       <View
         style={[
-          styles.wall,
+          s.wall,
           { width: WALL_W, height: WALL_H },
           atSummit && { overflow: "visible" },
         ]}
       >
         <ImageBackground
-          source={wallImage}
+          source={getWallImage(position)}
           style={StyleSheet.absoluteFill}
           resizeMode="cover"
         />
-        <View style={styles.overlay} />
+        <View style={s.overlay} />
 
         {nearSummit && (
-          <Animated.View
-            style={[styles.summitGlow, { opacity: glowOpacity }]}
-          />
+          <Animated.View style={[s.summitGlow, { opacity: glowOpacity }]} />
         )}
 
-        <View style={styles.summit}>
+        <View style={s.summit}>
           <Ionicons name="flag" size={35} color={COLORS.orange} />
         </View>
 
         {!atSummit && (
-          <Animated.View
-            style={[
-              styles.climber,
-              {
-                top: climberY,
-                transform: [{ translateX: swayAnim }, { scale: bounceAnim }],
-              },
-            ]}
-          >
-            {nearSummit && (
-              <Text style={styles.nearSummitBadge}>
-                Courage, tu y es presque !
-              </Text>
-            )}
-            <View
-              style={[
-                styles.avatarBubble,
-                nearSummit && styles.avatarBubbleNearSummit,
-              ]}
-            >
-              <Image source={avatar?.image} style={{ width: 35, height: 35 }} />
-            </View>
-            {streak > 0 && (
-              <View style={styles.streakBadge}>
-                <Ionicons name="flame" size={10} color="#fff" />
-                <Text style={styles.streakText}>{streak}</Text>
-              </View>
-            )}
-          </Animated.View>
+          <ClimberAvatar
+            avatar={avatar}
+            streak={streak}
+            nearSummit={nearSummit}
+            swayAnim={swayAnim}
+            bounceAnim={bounceAnim}
+            climberY={climberY}
+          />
         )}
 
-        {atSummit && (
-          <Animated.View
-            style={[
-              styles.victoryOverlay,
-              {
-                opacity: victoryAnim,
-                transform: [
-                  {
-                    scale: victoryAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0.85, 1],
-                    }),
-                  },
-                ],
-              },
-            ]}
-          >
-            <View style={styles.victoryCard}>
-              <Ionicons name="trophy" size={48} color={COLORS.gold} />
-              <Text style={styles.victoryTitle}>Sommet atteint !</Text>
-              <Image source={avatar?.image} style={styles.victoryAvatar} />
-              <Text style={styles.victoryAddiction}>
-                30 jours pour arrêter : {user?.addiction?.label?.toLowerCase()}
-              </Text>
-              <Text style={styles.victorySub}>Tu l'as fait. Pour de vrai.</Text>
-              <TouchableOpacity onPress={reset} style={styles.restartBtn}>
-                <Ionicons name="refresh" size={16} color={COLORS.bgSecondary} />
-                <Text style={styles.restartBtnText}>Recommencer à 0</Text>
-              </TouchableOpacity>
-              <Text style={styles.restartSub}>
-                Parce qu'on n'arrête jamais de grimper
-              </Text>
-            </View>
-          </Animated.View>
+        {atSummit && !victoryDismissed && (
+          <VictoryCard
+            avatar={avatar}
+            addictionLabel={user?.addiction?.label}
+            victoryAnim={victoryAnim}
+            onDismiss={() => setVictoryDismissed(true)}
+            onReset={reset}
+          />
         )}
 
         {!atSummit && (
-          <View style={styles.posLabel}>
-            <Text style={styles.posText}>
+          <View style={s.posLabel}>
+            <Text style={s.posText}>
               {position}/{TOTAL_STEPS}
             </Text>
           </View>
         )}
 
-        <View style={styles.progressBar}>
+        <View style={s.progressBar}>
           <View
             style={[
-              styles.progressFill,
+              s.progressFill,
               { height: `${progress * 100}%` },
-              nearSummit && styles.progressFillNearSummit,
+              nearSummit && s.progressFillNearSummit,
             ]}
           />
         </View>
@@ -440,7 +236,7 @@ export default function ClimberWall({
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   container: { alignItems: "center" },
   wall: {
     borderRadius: 20,
@@ -472,51 +268,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     zIndex: 10,
   },
-  climber: {
-    position: "absolute",
-    left: "50%",
-    marginLeft: -22,
-    alignItems: "center",
-    zIndex: 10,
-  },
-  nearSummitBadge: {
-    color: COLORS.gold,
-    fontSize: 9,
-    fontWeight: "900",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 8,
-    marginBottom: 4,
-    overflow: "hidden",
-  },
-  avatarBubble: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderColor: COLORS.gold,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  avatarBubbleNearSummit: {
-    borderColor: "#ffd700",
-    backgroundColor: "rgba(255,215,0,0.2)",
-    borderWidth: 3,
-  },
-  streakBadge: {
-    position: "absolute",
-    top: -8,
-    right: -14,
-    backgroundColor: COLORS.orange,
-    borderRadius: 10,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 2,
-  },
-  streakText: { color: "#fff", fontSize: 9, fontWeight: "900" },
   posLabel: {
     position: "absolute",
     bottom: 8,
@@ -545,63 +296,4 @@ const styles = StyleSheet.create({
     borderRadius: 2,
   },
   progressFillNearSummit: { backgroundColor: COLORS.gold },
-  victoryOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 20,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "rgba(0,0,0,0.75)",
-    padding: 20,
-  },
-  victoryCard: {
-    alignItems: "center",
-    backgroundColor: COLORS.bgSecondary,
-    borderRadius: 24,
-    padding: 28,
-    borderColor: COLORS.goldBorder,
-    width: "100%",
-    gap: 8,
-  },
-  victoryTitle: {
-    color: COLORS.gold,
-    fontSize: 24,
-    fontWeight: "900",
-    letterSpacing: 1,
-    textAlign: "center",
-  },
-  victoryAvatar: { width: 64, height: 64, marginVertical: 4 },
-  victoryAddiction: {
-    color: COLORS.textPrimary,
-    fontSize: 16,
-    fontWeight: "800",
-    textAlign: "center",
-  },
-  victorySub: {
-    color: COLORS.textSecondary,
-    fontSize: 13,
-    textAlign: "center",
-    marginBottom: 8,
-  },
-  restartBtn: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-    backgroundColor: COLORS.gold,
-    borderRadius: 14,
-    paddingHorizontal: 20,
-    paddingVertical: 12,
-    marginTop: 4,
-  },
-  restartBtnText: {
-    color: COLORS.bgSecondary,
-    fontWeight: "900",
-    fontSize: 15,
-  },
-  restartSub: {
-    color: COLORS.textMuted,
-    fontSize: 11,
-    fontStyle: "italic",
-    textAlign: "center",
-    marginTop: 4,
-  },
 });
