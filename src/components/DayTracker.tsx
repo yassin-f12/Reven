@@ -6,27 +6,68 @@ import { COLORS } from "@/src/utils/theme";
 
 interface Props {
   logs: DayLog[];
-  currentDay: number;
+  startDate: string | null;
   relapseCount: number;
 }
 
 type Status = "clean" | "ok" | "bad" | "fail" | "today" | "missed" | "future";
 
-export default function DayTracker({ logs, currentDay, relapseCount }: Props) {
+function dateForDay(startDate: string, dayNumber: number): string {
+  const d = new Date(startDate);
+  d.setDate(d.getDate() + dayNumber - 1);
+  return d.toISOString().split("T")[0];
+}
+
+function computeCurrentDay(startDate: string | null): number {
+  if (!startDate) return 1;
+  const start = new Date(startDate);
+  const startDay = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate(),
+  );
+  const today = new Date();
+  const todayDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
+  const diffMs = todayDay.getTime() - startDay.getTime();
+  const diff = Math.floor(diffMs / 86400000);
+  return Math.min(Math.max(diff + 1, 1), 30);
+}
+
+export default function DayTracker({ logs, startDate, relapseCount }: Props) {
   const days = Array.from({ length: 30 }, (_, i) => i + 1);
+  const currentDay = computeCurrentDay(startDate);
+  const todayStr = new Date().toISOString().split("T")[0];
+
+  const getLogForDay = (day: number): DayLog | undefined => {
+    if (!startDate) return undefined;
+    const targetDate = dateForDay(startDate, day);
+    return logs.find((l) => l.date.split("T")[0] === targetDate);
+  };
 
   const getDayStatus = (day: number): Status => {
-    const log = logs.find((l) => l.day === day);
-    if (!log)
-      return day < currentDay
-        ? "missed"
-        : day === currentDay
-          ? "today"
-          : "future";
-    if (log.count === 0) return "clean";
-    if (log.count <= 2) return "ok";
-    if (log.count <= 5) return "bad";
-    return "fail";
+    const log = getLogForDay(day);
+    if (day === currentDay)
+      return log
+        ? log.count === 0
+          ? "clean"
+          : log.count <= 2
+            ? "ok"
+            : log.count <= 5
+              ? "bad"
+              : "fail"
+        : "today";
+    if (day < currentDay) {
+      if (!log) return "missed";
+      if (log.count === 0) return "clean";
+      if (log.count <= 2) return "ok";
+      if (log.count <= 5) return "bad";
+      return "fail";
+    }
+    return "future";
   };
 
   const getColor = (status: Status): string => {
@@ -82,22 +123,23 @@ export default function DayTracker({ logs, currentDay, relapseCount }: Props) {
     { color: COLORS.danger, label: "3-5", icon: "arrow-down" },
     { color: COLORS.dangerDim, label: "6+", icon: "close" },
     { color: COLORS.info, label: "Auj'", icon: "radio-button-on" },
+    { color: COLORS.textSecondary, label: "Manqué", icon: "help" },
   ];
 
   return (
-    <View style={styles.container}>
-      <View style={styles.headerRow}>
-        <View style={styles.titleRow}>
+    <View style={st.container}>
+      <View style={st.headerRow}>
+        <View style={st.titleRow}>
           <Ionicons name="calendar" size={14} color={COLORS.textSecondary} />
-          <Text style={styles.title}> Les 30 jours</Text>
+          <Text style={st.title}> Les 30 jours</Text>
         </View>
-        <Ionicons name="arrow-forward" size={16} color={COLORS.textSecondary} />
+        <Text style={st.dayIndicator}>Jour {currentDay}/30</Text>
       </View>
 
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scroll}
+        contentContainerStyle={st.scroll}
       >
         {days.map((day) => {
           const status = getDayStatus(day);
@@ -107,35 +149,29 @@ export default function DayTracker({ logs, currentDay, relapseCount }: Props) {
           const isToday = day === currentDay;
 
           return (
-            <View key={day} style={styles.dayWrap}>
-              <View style={styles.milestoneTop}>
+            <View key={day} style={st.dayWrap}>
+              <View style={st.milestoneTop}>
                 {milestoneIcon && (
                   <Ionicons name={milestoneIcon} size={10} color={color} />
                 )}
               </View>
-
               <View
                 style={[
-                  styles.dayCell,
+                  st.dayCell,
                   { backgroundColor: color + "33", borderColor: color },
-                  isToday && styles.todayCell,
+                  isToday && st.todayCell,
                 ]}
               >
                 <Ionicons name={icon.name} size={icon.size} color={color} />
               </View>
-
               <Text
-                style={[
-                  styles.dayNum,
-                  { color: isToday ? COLORS.info : "#666" },
-                ]}
+                style={[st.dayNum, { color: isToday ? COLORS.info : "#666" }]}
               >
                 {day}
               </Text>
-
               {isToday && relapseCount > 0 && (
-                <View style={styles.relapseBadge}>
-                  <Text style={styles.relapseBadgeText}><Ionicons name="fitness" size={9} color={COLORS.danger} /> {relapseCount}</Text>
+                <View style={st.badge}>
+                  <Text style={st.badgeText}>{relapseCount}<Ionicons name={"fitness"} size={10} color={COLORS.danger} /></Text>
                 </View>
               )}
             </View>
@@ -143,11 +179,11 @@ export default function DayTracker({ logs, currentDay, relapseCount }: Props) {
         })}
       </ScrollView>
 
-      <View style={styles.legend}>
+      <View style={st.legend}>
         {legend.map((l) => (
-          <View key={l.label} style={styles.legendItem}>
-            <Ionicons name={l.icon} size={10} color={l.color} />
-            <Text style={styles.legendLabel}>{l.label}</Text>
+          <View key={l.label} style={st.legendItem}>
+            <Ionicons name={l.icon} size={16} color={l.color} />
+            <Text style={st.legendLabel}>{l.label}</Text>
           </View>
         ))}
       </View>
@@ -155,7 +191,7 @@ export default function DayTracker({ logs, currentDay, relapseCount }: Props) {
   );
 }
 
-const styles = StyleSheet.create({
+const st = StyleSheet.create({
   container: {
     backgroundColor: COLORS.bgPrimary,
     borderRadius: 16,
@@ -164,19 +200,15 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.bgSecondary,
   },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 12,
-    gap: 5,
-  },
+  titleRow: { flexDirection: "row", alignItems: "center", gap: 5 },
   headerRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 5,
+    marginBottom: 12,
   },
   title: { color: COLORS.textSecondary, fontWeight: "700", fontSize: 14 },
+  dayIndicator: { color: COLORS.gold, fontWeight: "700", fontSize: 12 },
   scroll: { paddingBottom: 4, gap: 6 },
   dayWrap: { alignItems: "center", width: 32 },
   milestoneTop: {
@@ -200,15 +232,15 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
   },
   dayNum: { fontSize: 9, marginTop: 2, fontWeight: "600" },
-  relapseBadge: {
+  badge: {
     marginTop: 2,
     backgroundColor: COLORS.danger + "22",
     borderRadius: 6,
-    paddingHorizontal: 2,
+    paddingHorizontal: 3,
     paddingVertical: 1,
     alignItems: "center",
   },
-  relapseBadgeText: { color: COLORS.danger, fontSize: 7, fontWeight: "900" },
+  badgeText: { color: COLORS.danger, fontSize: 10, fontWeight: "900" },
   legend: {
     flexDirection: "row",
     flexWrap: "wrap",

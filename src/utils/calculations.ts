@@ -4,6 +4,9 @@ import { COLORS } from "./theme";
 export const POINTS_PER_LEVEL = 200;
 export const MAX_LEVEL = 30;
 
+const ACTIVE_START_H = 7;
+const ACTIVE_END_H = 23;
+
 export function getTickIntervalSecondsFinal(level: number): number {
   if (level >= 30) return 4 * 3600;
   if (level >= 25) return 3.5 * 3600;
@@ -22,20 +25,18 @@ export function computeTicksDue(
   const now = Date.now();
   if (now <= from) return 0;
 
-  const ACTIVE_START_H = 7;
-  const ACTIVE_END_H = 23;
   let activeElapsedMs = 0;
   let cursor = from;
 
   while (cursor < now) {
     const cursorDate = new Date(cursor);
-    const dayActiveStart = new Date(cursorDate);
-    dayActiveStart.setHours(ACTIVE_START_H, 0, 0, 0);
-    const dayActiveEnd = new Date(cursorDate);
-    dayActiveEnd.setHours(ACTIVE_END_H, 0, 0, 0);
+    const dayStart = new Date(cursorDate);
+    dayStart.setHours(ACTIVE_START_H, 0, 0, 0);
+    const dayEnd = new Date(cursorDate);
+    dayEnd.setHours(ACTIVE_END_H, 0, 0, 0);
 
-    const windowStart = Math.max(cursor, dayActiveStart.getTime());
-    const windowEnd = Math.min(now, dayActiveEnd.getTime());
+    const windowStart = Math.max(cursor, dayStart.getTime());
+    const windowEnd = Math.min(now, dayEnd.getTime());
     if (windowEnd > windowStart) activeElapsedMs += windowEnd - windowStart;
 
     const nextDay = new Date(cursorDate);
@@ -52,9 +53,35 @@ export function getSecondsUntilNextTick(
   level = 0,
 ): number {
   if (!lastTickTime) return getTickIntervalSecondsFinal(level);
+
   const interval = getTickIntervalSecondsFinal(level);
-  const elapsed = (Date.now() - new Date(lastTickTime).getTime()) / 1000;
-  return Math.max(0, Math.ceil(interval - elapsed));
+  const from = new Date(lastTickTime).getTime();
+  const now = Date.now();
+  if (now <= from) return interval;
+
+  let activeElapsedMs = 0;
+  let cursor = from;
+
+  while (cursor < now) {
+    const cursorDate = new Date(cursor);
+    const dayStart = new Date(cursorDate);
+    dayStart.setHours(ACTIVE_START_H, 0, 0, 0);
+    const dayEnd = new Date(cursorDate);
+    dayEnd.setHours(ACTIVE_END_H, 0, 0, 0);
+
+    const windowStart = Math.max(cursor, dayStart.getTime());
+    const windowEnd = Math.min(now, dayEnd.getTime());
+    if (windowEnd > windowStart) activeElapsedMs += windowEnd - windowStart;
+
+    const nextDay = new Date(cursorDate);
+    nextDay.setDate(nextDay.getDate() + 1);
+    nextDay.setHours(ACTIVE_START_H, 0, 0, 0);
+    cursor = nextDay.getTime();
+  }
+
+  const activeElapsedSecs = activeElapsedMs / 1000;
+  const remaining = interval - (activeElapsedSecs % interval);
+  return Math.max(0, Math.ceil(remaining));
 }
 
 function penaltyMult(level: number): number {
@@ -95,21 +122,44 @@ export function computePointsToNextLevel(score: number): number {
   return (l + 1) * POINTS_PER_LEVEL - score;
 }
 
+
 export function computeStreak(logs: DayLog[]): number {
+  if (logs.length === 0) return 0;
+
+  const loggedDates = new Set(
+    logs.map((l) => new Date(l.date).toISOString().split("T")[0]),
+  );
+
   let streak = 0;
-  for (const log of [...logs].sort((a, b) => b.day - a.day)) {
-    if (log.count === 0) streak++;
-    else break;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+
+  while (true) {
+    const key = cursor.toISOString().split("T")[0];
+    if (!loggedDates.has(key)) break;
+    streak++;
+    cursor.setDate(cursor.getDate() - 1);
   }
+
   return streak;
 }
 
 export function computeDayNumber(startDate: string | null): number {
   if (!startDate) return 1;
-  const diff = Math.floor(
-    (Date.now() - new Date(startDate).getTime()) / 86400000,
+  const start = new Date(startDate);
+  const startDay = new Date(
+    start.getFullYear(),
+    start.getMonth(),
+    start.getDate(),
   );
-  return Math.min(diff + 1, 30);
+  const today = new Date();
+  const todayDay = new Date(
+    today.getFullYear(),
+    today.getMonth(),
+    today.getDate(),
+  );
+  const diff = Math.floor((todayDay.getTime() - startDay.getTime()) / 86400000);
+  return Math.min(Math.max(diff + 1, 1), 30);
 }
 
 export function getDeltaInfo(count: number, _?: string, level = 0) {
