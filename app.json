@@ -13,14 +13,14 @@
     ],
     "plugins": [
       "expo-router",
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/images/adaptive-icon.png",
-          "color": "#ffd200",
-          "sounds": []
-        }
-      ]
+      // [
+      //   "expo-notifications",
+      //   {
+      //     "icon": "./assets/images/adaptive-icon.png",
+      //     "color": "#ffd200",
+      //     "sounds": []
+      //   }
+      // ]
     ],
     "ios": {
       "supportsTablet": false,
@@ -36,10 +36,10 @@
       },
       "edgeToEdgeEnabled": true,
       "permissions": [
-        "NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED",
-        "NOTIFICATIONS",
-        "RECEIVE_BOOT_COMPLETED"
+        // "NOTIFICATIONS",
+        // "RECEIVE_BOOT_COMPLETED",
+        // "NOTIFICATIONS",
+        // "RECEIVE_BOOT_COMPLETED"
       ],
       "package": "com.yasdevfs.reven"
     },

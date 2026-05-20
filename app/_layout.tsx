@@ -1,5 +1,5 @@
 import useStore from "@/src/store/useStore";
-import { scheduleAllNotifications } from "@/src/utils/notifications";
+// import { scheduleAllNotifications } from "@/src/utils/notifications";
 import { Stack, useRouter, useSegments } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { useEffect, useState } from "react";
@@ -34,13 +34,13 @@ export default function RootLayout() {
     }
   }, [isReady, user, segments]);
 
-  useEffect(() => {
-    if (!user || !notificationSettings) return;
+  // useEffect(() => {
+  //   if (!user || !notificationSettings) return;
 
-    (async () => {
-      await scheduleAllNotifications(notificationSettings);
-    })();
-  }, [user, notificationSettings]);
+  //   (async () => {
+  //     await scheduleAllNotifications(notificationSettings);
+  //   })();
+  // }, [user, notificationSettings]);
 
   return (
     <ImageBackground
