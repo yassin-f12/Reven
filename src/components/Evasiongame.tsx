@@ -9,6 +9,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { Audio } from "expo-av";
 import {
   COLORS,
   FONT_SIZE,
@@ -30,36 +31,54 @@ const LANE_W = GAME_W / LANE_COUNT;
 
 type Obstacle = { id: number; lane: number; y: number };
 
-
 function spawnWave(
   score: number,
   idRef: React.MutableRefObject<number>,
 ): Obstacle[] {
   const lanes = [0, 1, 2];
   const shuffled = [...lanes].sort(() => Math.random() - 0.5);
-
   let count: number;
-  if (score < 10) {
-    count = 1;
-  } else if (score < 25) {
-    count = Math.random() < 0.4 ? 2 : 1;
-  } else {
-    count = 2;
-  }
-
+  if (score < 10) count = 1;
+  else if (score < 25) count = Math.random() < 0.4 ? 2 : 1;
+  else count = 2;
   return shuffled.slice(0, count).map((lane) => {
     idRef.current += 1;
     return { id: idRef.current, lane, y: -OBS_H };
   });
 }
 
+async function loadSound(path: any): Promise<Audio.Sound | null> {
+  try {
+    const { sound } = await Audio.Sound.createAsync(path);
+    return sound;
+  } catch {
+    return null;
+  }
+}
+
+async function playSound(sound: Audio.Sound | null) {
+  if (!sound) return;
+  try {
+    await sound.replayAsync();
+  } catch {}
+}
+
+async function stopSound(sound: Audio.Sound | null) {
+  if (!sound) return;
+  try {
+    await sound.stopAsync();
+  } catch {}
+}
+let globalBest = 0;
+
 export default function EvasionGame() {
+
   const user = useStore((s) => s.user);
 
   const [lane, setLane] = useState(1);
   const [obs, setObs] = useState<Obstacle[]>([]);
   const [score, setScore] = useState(0);
-  const [best, setBest] = useState(0);
+  const [best, setBest] = useState(globalBest);
   const [running, setRunning] = useState(false);
   const [dead, setDead] = useState(false);
 
@@ -68,20 +87,50 @@ export default function EvasionGame() {
   const scoreRef = useRef(0);
   const idRef = useRef(0);
   const loopRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const spawnRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const spawnRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const soundBg = useRef<Audio.Sound | null>(null);
+  const soundDie = useRef<Audio.Sound | null>(null);
+  const soundMove = useRef<Audio.Sound | null>(null);
+
+  useEffect(() => {
+    Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+
+    (async () => {
+      soundBg.current = await loadSound(require("@/assets/sounds/game_bg.mp3"));
+      soundDie.current = await loadSound(
+        require("@/assets/sounds/game_die.mp3"),
+      );
+      soundMove.current = await loadSound(
+        require("@/assets/sounds/game_move.mp3"),
+      );
+
+      if (soundBg.current) {
+        await soundBg.current.setIsLoopingAsync(true);
+      }
+    })();
+
+    return () => {
+      soundBg.current?.unloadAsync();
+      soundDie.current?.unloadAsync();
+      soundMove.current?.unloadAsync();
+    };
+  }, []);
 
   const laneX = (l: number) => l * LANE_W + LANE_W / 2 - PLAYER_W / 2;
   const obsLaneX = (l: number) => l * LANE_W + LANE_W / 2 - OBS_W / 2;
   const playerY = GAME_H - PLAYER_H - 8;
 
   const moveTo = (l: number) => {
+    if (!running) return;
     laneRef.current = l;
     setLane(l);
+    playSound(soundMove.current);
   };
 
   const start = () => {
     if (loopRef.current) clearInterval(loopRef.current);
-    if (spawnRef.current) clearInterval(spawnRef.current);
+    if (spawnRef.current) clearTimeout(spawnRef.current);
     laneRef.current = 1;
     obsRef.current = [];
     scoreRef.current = 0;
@@ -91,14 +140,21 @@ export default function EvasionGame() {
     setScore(0);
     setDead(false);
     setRunning(true);
+    playSound(soundBg.current);
   };
 
   const stop = (final: number) => {
     setRunning(false);
     setDead(true);
     if (loopRef.current) clearInterval(loopRef.current);
-    if (spawnRef.current) clearInterval(spawnRef.current);
-    setBest((b) => Math.max(b, final));
+    if (spawnRef.current) clearTimeout(spawnRef.current);
+    setBest((b) => {
+      const next = Math.max(b, final);
+      globalBest = next;
+      return next;
+    });
+    stopSound(soundBg.current);
+    playSound(soundDie.current);
   };
 
   useEffect(() => {
@@ -133,7 +189,8 @@ export default function EvasionGame() {
 
     loopRef.current = setInterval(() => {
       const s = scoreRef.current;
-      const speed = Math.min(3 + Math.floor(s / 8) * 0.6, 9);
+      const speedBoost = s >= 2500 ? 3 : s >= 1500 ? 2 : s >= 800 ? 1 : 0;
+      const speed = Math.min(3 + Math.floor(s / 8) * 0.4 + speedBoost, 12);
 
       const next = obsRef.current
         .map((o) => ({ ...o, y: o.y + speed }))
@@ -169,6 +226,7 @@ export default function EvasionGame() {
     () => () => {
       if (loopRef.current) clearInterval(loopRef.current);
       if (spawnRef.current) clearTimeout(spawnRef.current);
+      stopSound(soundBg.current);
     },
     [],
   );
@@ -243,9 +301,9 @@ export default function EvasionGame() {
 
       <View style={g.tapRow}>
         {[
-          { target: 0, icon: "arrow-back" as const, label: "←" },
-          { target: 1, icon: "remove" as const, label: "▪" },
-          { target: 2, icon: "arrow-forward" as const, label: "→" },
+          { target: 0, icon: "arrow-back" as const },
+          { target: 1, icon: "remove" as const },
+          { target: 2, icon: "arrow-forward" as const },
         ].map(({ target, icon }) => (
           <TouchableOpacity
             key={target}
@@ -273,7 +331,7 @@ export default function EvasionGame() {
       </TouchableOpacity>
 
       <Text style={g.hint}>
-        Chaque seconde à jouer = une seconde sans craquer 
+        Chaque seconde à jouer = une seconde sans craquer
       </Text>
     </View>
   );
@@ -308,11 +366,6 @@ const g = StyleSheet.create({
     color: COLORS.warning,
     fontWeight: FONT_WEIGHT.black,
     fontSize: FONT_SIZE.md,
-  },
-  diffText: {
-    color: COLORS.textMuted,
-    fontSize: FONT_SIZE.xs,
-    fontStyle: "italic",
   },
   bestText: { color: COLORS.textMuted, fontSize: FONT_SIZE.sm },
   arena: {
