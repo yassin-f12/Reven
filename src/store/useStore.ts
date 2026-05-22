@@ -24,7 +24,7 @@ export const TROPHY_DEFS: Trophy[] = [
     id: "t2",
     iconName: "flame",
     title: "En Feu",
-    desc: "3 jours consécutifs clean",
+    desc: "3 jours loggés consécutifs",
   },
   {
     id: "t3",

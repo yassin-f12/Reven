@@ -122,20 +122,24 @@ export function computePointsToNextLevel(score: number): number {
   return (l + 1) * POINTS_PER_LEVEL - score;
 }
 
-
 export function computeStreak(logs: DayLog[]): number {
   if (logs.length === 0) return 0;
 
-  const loggedDates = new Set(
-    logs.map((l) => new Date(l.date).toISOString().split("T")[0]),
-  );
+  const toLocalKey = (d: Date) => {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+  };
+
+  const loggedDates = new Set(logs.map((l) => toLocalKey(new Date(l.date))));
 
   let streak = 0;
   const cursor = new Date();
   cursor.setHours(0, 0, 0, 0);
 
   while (true) {
-    const key = cursor.toISOString().split("T")[0];
+    const key = toLocalKey(cursor);
     if (!loggedDates.has(key)) break;
     streak++;
     cursor.setDate(cursor.getDate() - 1);
