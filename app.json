@@ -13,14 +13,7 @@
     ],
     "plugins": [
       "expo-router",
-      // [
-      //   "expo-notifications",
-      //   {
-      //     "icon": "./assets/images/adaptive-icon.png",
-      //     "color": "#ffd200",
-      //     "sounds": []
-      //   }
-      // ]
+      "expo-audio"
     ],
     "ios": {
       "supportsTablet": false,
@@ -35,12 +28,7 @@
         "backgroundColor": "#1a1a2e"
       },
       "edgeToEdgeEnabled": true,
-      "permissions": [
-        // "NOTIFICATIONS",
-        // "RECEIVE_BOOT_COMPLETED",
-        // "NOTIFICATIONS",
-        // "RECEIVE_BOOT_COMPLETED"
-      ],
+      "permissions": [],
       "package": "com.yasdevfs.reven"
     },
     "web": {

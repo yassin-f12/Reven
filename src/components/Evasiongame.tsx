@@ -9,7 +9,7 @@ import {
   View,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { Audio } from "expo-av";
+import { useAudioPlayer, useAudioPlayerStatus } from "expo-audio";
 import {
   COLORS,
   FONT_SIZE,
@@ -47,32 +47,9 @@ function spawnWave(
   });
 }
 
-async function loadSound(path: any): Promise<Audio.Sound | null> {
-  try {
-    const { sound } = await Audio.Sound.createAsync(path);
-    return sound;
-  } catch {
-    return null;
-  }
-}
-
-async function playSound(sound: Audio.Sound | null) {
-  if (!sound) return;
-  try {
-    await sound.replayAsync();
-  } catch {}
-}
-
-async function stopSound(sound: Audio.Sound | null) {
-  if (!sound) return;
-  try {
-    await sound.stopAsync();
-  } catch {}
-}
 let globalBest = 0;
 
 export default function EvasionGame() {
-
   const user = useStore((s) => s.user);
 
   const [lane, setLane] = useState(1);
@@ -89,33 +66,9 @@ export default function EvasionGame() {
   const loopRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const spawnRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const soundBg = useRef<Audio.Sound | null>(null);
-  const soundDie = useRef<Audio.Sound | null>(null);
-  const soundMove = useRef<Audio.Sound | null>(null);
-
-  useEffect(() => {
-    Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-
-    (async () => {
-      soundBg.current = await loadSound(require("@/assets/sounds/game_bg.mp3"));
-      soundDie.current = await loadSound(
-        require("@/assets/sounds/game_die.mp3"),
-      );
-      soundMove.current = await loadSound(
-        require("@/assets/sounds/game_move.mp3"),
-      );
-
-      if (soundBg.current) {
-        await soundBg.current.setIsLoopingAsync(true);
-      }
-    })();
-
-    return () => {
-      soundBg.current?.unloadAsync();
-      soundDie.current?.unloadAsync();
-      soundMove.current?.unloadAsync();
-    };
-  }, []);
+  const playerBg = useAudioPlayer(require("@/assets/sounds/game_bg.mp3"));
+  const playerDie = useAudioPlayer(require("@/assets/sounds/game_die.mp3"));
+  const playerMove = useAudioPlayer(require("@/assets/sounds/game_move.mp3"));
 
   const laneX = (l: number) => l * LANE_W + LANE_W / 2 - PLAYER_W / 2;
   const obsLaneX = (l: number) => l * LANE_W + LANE_W / 2 - OBS_W / 2;
@@ -125,7 +78,8 @@ export default function EvasionGame() {
     if (!running) return;
     laneRef.current = l;
     setLane(l);
-    playSound(soundMove.current);
+    playerMove.seekTo(0);
+    playerMove.play();
   };
 
   const start = () => {
@@ -140,7 +94,9 @@ export default function EvasionGame() {
     setScore(0);
     setDead(false);
     setRunning(true);
-    playSound(soundBg.current);
+    playerBg.loop = true;
+    playerBg.seekTo(0);
+    playerBg.play();
   };
 
   const stop = (final: number) => {
@@ -153,8 +109,9 @@ export default function EvasionGame() {
       globalBest = next;
       return next;
     });
-    stopSound(soundBg.current);
-    playSound(soundDie.current);
+    playerBg.pause();
+    playerDie.seekTo(0);
+    playerDie.play();
   };
 
   useEffect(() => {
@@ -226,7 +183,7 @@ export default function EvasionGame() {
     () => () => {
       if (loopRef.current) clearInterval(loopRef.current);
       if (spawnRef.current) clearTimeout(spawnRef.current);
-      stopSound(soundBg.current);
+      playerBg.pause();
     },
     [],
   );
